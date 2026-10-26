@@ -1,0 +1,1095 @@
+"""
+GEO Audit business logic.
+
+Extracted from scripts/geo_audit.py. All functions return dataclasses
+instead of printing — the CLI layer handles display and formatting.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import time
+from urllib.parse import urljoin
+
+# ─── Re-exports from split modules (backward compatibility, #402) ────────────
+from geo_optimizer.core.audit_ai_discovery import (
+    _audit_ai_discovery_from_responses,
+    audit_ai_discovery,  # noqa: F401
+)
+from geo_optimizer.core.audit_brand import audit_brand_entity  # noqa: F401
+from geo_optimizer.core.audit_cdn import audit_cdn_ai_crawler  # noqa: F401
+from geo_optimizer.core.audit_content import audit_content_quality  # noqa: F401
+from geo_optimizer.core.audit_js import audit_js_rendering  # noqa: F401
+from geo_optimizer.core.audit_llms import (
+    _audit_llms_from_response,
+    _validate_llms_content,  # noqa: F401
+    audit_llms_txt,  # noqa: F401
+)
+from geo_optimizer.core.audit_meta import audit_meta_tags  # noqa: F401
+from geo_optimizer.core.audit_negative import audit_negative_signals  # noqa: F401
+from geo_optimizer.core.audit_robots import (
+    _audit_robots_from_response,
+    audit_robots_txt,  # noqa: F401
+)
+from geo_optimizer.core.audit_schema import audit_schema  # noqa: F401
+from geo_optimizer.core.audit_signals import audit_signals  # noqa: F401
+from geo_optimizer.core.audit_webmcp import _extract_actions, audit_webmcp_readiness  # noqa: F401
+from geo_optimizer.core.intent_mapping import audit_intent_mapping
+from geo_optimizer.core.scoring import (  # noqa: F401 (re-exported for backward compatibility)
+    compute_geo_score,
+    compute_score_breakdown,
+    get_score_band,
+)
+from geo_optimizer.models.config import (  # noqa: F401 (VALUABLE_SCHEMAS re-exported)
+    ABOUT_LINK_PATTERNS,
+    AI_BOTS,
+    AUDIT_TIMEOUT_SECONDS,
+    CATEGORY_MAX,
+    CITATION_BOTS,
+    CONTENT_MIN_WORDS,
+    KEYWORD_STUFFING_THRESHOLD,
+    ROBOTS_KEY_BOTS_DISPLAY,
+    SCORE_BANDS,
+    SCORING,
+    VALUABLE_SCHEMAS,
+)
+from geo_optimizer.models.results import (
+    AiDiscoveryResult,
+    AuditResult,
+    BrandEntityResult,
+    CachedResponse,
+    CdnAiCrawlerResult,
+    CitabilityResult,
+    ContentResult,
+    JsRenderingResult,
+    LlmsTxtResult,
+    MetaResult,
+    MultimodalResult,
+    NegativeSignalsResult,
+    PromptInjectionResult,
+    RobotsResult,
+    SchemaResult,
+    SignalsResult,
+    WebMcpResult,
+)
+from geo_optimizer.utils.http import fetch_url
+from geo_optimizer.utils.validators import normalize_url_scheme
+
+
+def build_recommendations(
+    base_url: str,
+    robots: RobotsResult,
+    llms: LlmsTxtResult,
+    schema: SchemaResult,
+    meta: MetaResult,
+    content: ContentResult,
+    ai_discovery: AiDiscoveryResult | None = None,
+    signals: SignalsResult | None = None,
+    brand_entity: BrandEntityResult | None = None,
+    webmcp: WebMcpResult | None = None,
+    negative_signals: NegativeSignalsResult | None = None,
+    prompt_injection: PromptInjectionResult | None = None,
+    score_breakdown: dict[str, int] | None = None,
+    multimodal: MultimodalResult | None = None,
+) -> list[str]:
+    """Build a prioritized list of recommendations sorted by score impact (gap #5).
+
+    Priority buckets (returned in order):
+      critical → HIGH (robots 18pt, llms 18pt, meta 14pt)
+      → MEDIUM (brand 10pt, schema 13pt, content 12pt, negative penalty)
+      → LOW (signals 6pt, ai_discovery 6pt, webmcp, product)
+
+    When ``score_breakdown`` (from ``compute_score_breakdown``) is provided,
+    categories inside each bucket are reordered by recoverable points
+    (category max minus points earned), so the highest-impact fixes come first.
+    Without it, the static category order above is kept.
+    """
+    _critical: list[str] = []
+    _h_robots: list[str] = []
+    _h_llms: list[str] = []
+    _h_meta: list[str] = []
+    _m_llms: list[str] = []
+    _m_meta: list[str] = []
+    _m_brand: list[str] = []
+    _m_schema: list[str] = []
+    _m_content: list[str] = []
+    _m_negative: list[str] = []
+    _l_signals: list[str] = []
+    _l_content: list[str] = []
+    _l_ai: list[str] = []
+    _l_schema: list[str] = []
+    _l_webmcp: list[str] = []
+    _l_multimodal: list[str] = []
+
+    # ── CRITICAL — blocking signals ─────────────────────────────────────────
+    # gap #2: X-Robots-Tag: noindex via HTTP header
+    if getattr(meta, "x_robots_noindex", False):
+        _critical.append(
+            f"CRITICAL: X-Robots-Tag: {meta.x_robots_tag} detected in HTTP response headers — "
+            "AI crawlers will skip this page entirely. Remove the header or set it to 'all'."
+        )
+    # gap #7: noai in meta robots
+    if getattr(meta, "has_noai", False):
+        _critical.append(
+            f"noai directive detected in meta robots ({meta.noai_value}) — "
+            "some AI search engines respect this and may refuse to cite your content. "
+            "Remove 'noai' to maximize AI citability."
+        )
+    # v4.4: Prompt Injection — critical manipulation patterns
+    if prompt_injection is not None and prompt_injection.checked and prompt_injection.severity != "clean":
+        if prompt_injection.llm_instruction_found:
+            _critical.append(
+                "⚠️ CRITICAL: LLM prompt instructions detected in page content — "
+                "this is a manipulation pattern that AI engines actively penalize"
+            )
+        if prompt_injection.html_comment_injection_found:
+            _critical.append("⚠️ Prompt injection in HTML comments detected — AI crawlers read comments, remove them")
+        if prompt_injection.hidden_text_found:
+            _critical.append(
+                "Hidden text detected (display:none/visibility:hidden with content) — "
+                "AI crawlers can read it and may penalize this cloaking pattern"
+            )
+
+    # ── HIGH — robots(18pt), llms(18pt), meta title(5pt) ──────────────────
+    # Fix #453: split robots recommendation — create vs update
+    if not robots.found:
+        _h_robots.append(f"Create robots.txt with Allow rules for AI bots ({ROBOTS_KEY_BOTS_DISPLAY})")
+    elif not robots.citation_bots_ok:
+        _h_robots.append(f"Update robots.txt to include all AI bots ({ROBOTS_KEY_BOTS_DISPLAY})")
+    # gap #8: Crawl-delay slows AI crawlers — flag when > 10s
+    _crawl_delay = getattr(robots, "crawl_delay", None)
+    if _crawl_delay is not None and _crawl_delay > 10:
+        _h_robots.append(
+            f"robots.txt Crawl-delay: {int(_crawl_delay)}s is very aggressive — "
+            "AI crawlers may skip re-indexing your content. Reduce to ≤5s or remove the directive."
+        )
+    if not llms.found:
+        _h_llms.append(
+            f"Create /llms.txt for AI indexing: geo llms --base-url {base_url}. "
+            "Note: llms.txt is an organizational signal, not a proven ranking factor. "
+            "It helps structure content for AI systems."
+        )
+    if not meta.has_title:
+        _h_meta.append("Add a <title> tag — the strongest on-page signal for AI search (5 pts)")
+
+    # ── MEDIUM — meta(9pt), schema(13pt), brand(10pt), content(12pt), negatives ──
+    if llms.found:
+        # #247: llms.txt Policy Intelligence — content quality
+        if llms.sections_count == 0:
+            _m_llms.append(
+                "Add H2 sections to llms.txt to organize content by topic (e.g. ## Features, ## Documentation, ## API)"
+            )
+        if llms.links_count < 3:
+            _m_llms.append(
+                f"llms.txt has only {llms.links_count} links. "
+                "Add more markdown links to key pages for better AI indexing coverage."
+            )
+        if hasattr(llms, "validation_warnings"):
+            for warning in llms.validation_warnings:
+                _m_llms.append(warning)
+
+    # Meta tags (canonical 3pt, og 4pt, description 2pt)
+    if not meta.has_canonical:
+        _m_meta.append('Add <link rel="canonical"> to prevent duplicate content issues in AI indexing')
+    if not meta.has_og_title or not meta.has_og_description:
+        _m_meta.append("Add Open Graph tags (og:title, og:description, og:image) for AI and social previews")
+    if not meta.has_description:
+        _m_meta.append("Add optimized meta description (150-160 characters)")
+
+    # Brand & Entity (up to 10pt)
+    if brand_entity is not None:
+        if not brand_entity.brand_name_consistent and len(brand_entity.names_found) >= 2:
+            _m_brand.append("Use consistent brand name across title, og:title, H1, and schema Organization")
+        if brand_entity.kg_pillar_count == 0:
+            _m_brand.append(
+                "Add sameAs links in Organization schema to Wikipedia, Wikidata, LinkedIn, or Crunchbase "
+                "for Knowledge Graph disambiguation"
+            )
+        elif brand_entity.kg_pillar_count < 3:
+            _m_brand.append(
+                f"Add more sameAs links to Knowledge Graph pillars "
+                f"(currently {brand_entity.kg_pillar_count}/4: Wikipedia, Wikidata, LinkedIn, Crunchbase)"
+            )
+        if not brand_entity.has_about_link:
+            _m_brand.append("Add a visible /about or /chi-siamo link to build trust signals for AI")
+        if not brand_entity.has_contact_info:
+            _m_brand.append("Add address, telephone or contactPoint to Organization schema for entity validation")
+
+    # Schema JSON-LD (up to 13pt)
+    if schema.json_parse_errors > 0:
+        _m_schema.append(
+            f"Found {schema.json_parse_errors} JSON-LD script(s) with parse errors — validate at schema.org/validator"
+        )
+    if not schema.has_website:
+        _m_schema.append("Add WebSite JSON-LD schema to homepage")
+    if not schema.has_organization:
+        _m_schema.append("Add Organization JSON-LD schema with name, url, and logo")
+    if not schema.has_faq:
+        _m_schema.append("Add FAQPage schema with site FAQs")
+    # gap #3: schema completeness
+    for schema_type, missing_fields in getattr(schema, "schema_missing_fields", {}).items():
+        _m_schema.append(
+            f"Incomplete {schema_type} schema: add required fields {', '.join(missing_fields)} "
+            f"(see schema.org/{schema_type} for the full spec)"
+        )
+
+    # Content (up to 12pt)
+    if not content.has_h1:
+        _m_content.append("Add a single H1 heading that clearly states the page topic")
+    if content.word_count < CONTENT_MIN_WORDS:
+        _m_content.append("Expand content to 300+ words — AI engines need substance to cite")
+    if hasattr(content, "has_heading_hierarchy") and not content.has_heading_hierarchy:
+        _m_content.append("Add H2/H3 subheadings to structure content for AI extraction")
+    if hasattr(content, "has_front_loading") and not content.has_front_loading:
+        _m_content.append("Front-load key information in the first 30% of content for AI snippet selection")
+
+    # Negative signals (score penalty reduction)
+    if negative_signals is not None and negative_signals.checked:
+        if negative_signals.cta_density_high:
+            _m_negative.append(
+                f"Reduce promotional CTAs ({negative_signals.cta_count} found) "
+                "— AI engines deprioritize overly promotional content"
+            )
+        if negative_signals.is_thin_content:
+            _m_negative.append(
+                "Content is thin for the topic promised by H1 — expand to 500+ words for AI citation eligibility"
+            )
+        if negative_signals.has_keyword_stuffing:
+            _m_negative.append(
+                f"Keyword stuffing detected: '{negative_signals.stuffed_word}' "
+                f"at {negative_signals.stuffed_density}% density — diversify vocabulary"
+            )
+        if negative_signals.boilerplate_high:
+            _m_negative.append(
+                f"High boilerplate ratio ({int(negative_signals.boilerplate_ratio * 100)}%) "
+                "— use <main> tag to help AI extract core content"
+            )
+        if negative_signals.has_mixed_signals:
+            _m_negative.append(f"Mixed signals: {negative_signals.mixed_signal_detail}")
+
+    # ── LOW — signals(6pt), ai_discovery(6pt), content details(2pt), webmcp ──
+    # Signals (lang 3pt, rss 2pt)
+    if signals is not None and not signals.has_lang:
+        _l_signals.append('Add lang attribute to <html> tag (e.g., lang="en") for AI language detection')
+    if signals is not None and not signals.has_rss:
+        _l_signals.append(
+            "Add RSS/Atom feed and link it in <head> with "
+            '<link rel="alternate" type="application/rss+xml"> for AI discovery'
+        )
+
+    # Content details (numbers 1pt, links 1pt)
+    if not content.has_numbers:
+        _l_content.append("Add numerical data and concrete statistics (+40% AI visibility)")
+    if not content.has_links:
+        _l_content.append("Cite authoritative sources with external links (increase AI credibility)")
+
+    # AI discovery (up to 6pt)
+    if ai_discovery is not None:
+        if not ai_discovery.has_well_known_ai:
+            _l_ai.append("Create /.well-known/ai.txt to define AI crawler permissions")
+        if not ai_discovery.has_summary or not ai_discovery.summary_valid:
+            _l_ai.append("Create /ai/summary.json with site name and description for AI engines")
+        if not ai_discovery.has_faq:
+            _l_ai.append("Create /ai/faq.json with structured FAQ for AI search visibility")
+        if not ai_discovery.has_service:
+            _l_ai.append("Create /ai/service.json to describe service capabilities for AI")
+
+    # Product schema (informational)
+    if schema.has_product and hasattr(schema, "ecommerce_signals"):
+        signals_dict = schema.ecommerce_signals
+        missing_fields = [k for k, v in signals_dict.items() if not v and k != "complete"]
+        if missing_fields:
+            _l_schema.append(
+                f"Complete Product schema: missing {', '.join(missing_fields)}. "
+                "Rich Product schema improves AI shopping visibility."
+            )
+
+    # WebMCP (informational)
+    if webmcp is not None and webmcp.checked:
+        if webmcp.readiness_level == "none":
+            _l_webmcp.append("Add potentialAction (SearchAction) to WebSite schema for AI agent discoverability")
+        if not webmcp.has_labeled_forms and not webmcp.has_tool_attributes:
+            _l_webmcp.append("Add descriptive labels to forms (label, aria-label) to make them usable by AI agents")
+        if not webmcp.has_register_tool and not webmcp.has_tool_attributes:
+            _l_webmcp.append(
+                "Consider adding WebMCP toolname/tooldescription attributes to interactive elements "
+                "for Chrome AI agent support"
+            )
+
+    # Multimodal readiness (informational) — multimodal engines reach non-text
+    # content through its text scaffolding
+    if multimodal is not None and multimodal.checked:
+        if multimodal.total_images and multimodal.alt_coverage < 0.8:
+            missing_alts = multimodal.total_images - multimodal.images_with_alt
+            _l_multimodal.append(
+                f"{missing_alts} of {multimodal.total_images} images lack descriptive alt text — "
+                "multimodal AI engines (Gemini, GPT-4o) read images through their alt text"
+            )
+        if multimodal.has_video and not multimodal.has_video_schema:
+            _l_multimodal.append(
+                "Video detected without VideoObject schema — add name, description, thumbnailUrl, "
+                "and uploadDate so AI engines can cite your video content"
+            )
+        if multimodal.has_video and not (multimodal.has_video_captions or multimodal.has_transcript):
+            _l_multimodal.append(
+                'Video without captions or transcript — add <track kind="captions"> or a text '
+                "transcript: AI engines index the transcript, not the pixels"
+            )
+        if multimodal.has_audio and not (multimodal.has_audio_schema or multimodal.has_transcript):
+            _l_multimodal.append(
+                "Audio content without AudioObject/PodcastEpisode schema or transcript — "
+                "add one to make it citable by AI engines"
+            )
+
+    # gap #5: order categories inside each bucket by recoverable points
+    high_segs: list[tuple[str | None, list[str]]] = [
+        ("robots", _h_robots),
+        ("llms", _h_llms),
+        ("meta", _h_meta),
+    ]
+    medium_segs: list[tuple[str | None, list[str]]] = [
+        ("llms", _m_llms),
+        ("meta", _m_meta),
+        ("brand_entity", _m_brand),
+        ("schema", _m_schema),
+        ("content", _m_content),
+        ("negative_penalty", _m_negative),
+    ]
+    low_segs: list[tuple[str | None, list[str]]] = [
+        ("signals", _l_signals),
+        ("content", _l_content),
+        ("ai_discovery", _l_ai),
+        ("schema", _l_schema),
+        (None, _l_webmcp),
+        (None, _l_multimodal),
+    ]
+
+    def _recoverable(category: str | None) -> int:
+        if score_breakdown is None or category is None:
+            return 0
+        if category == "negative_penalty":
+            # Penalty is stored as a negative value: recoverable = its magnitude
+            return -score_breakdown.get(category, 0)
+        return CATEGORY_MAX.get(category, 0) - max(0, score_breakdown.get(category, 0))
+
+    def _flatten(segs: list[tuple[str | None, list[str]]]) -> list[str]:
+        if score_breakdown is not None:
+            # sorted() is stable: ties keep the static category order
+            segs = sorted(segs, key=lambda seg: _recoverable(seg[0]), reverse=True)
+        return [rec for _, seg in segs for rec in seg]
+
+    return _critical + _flatten(high_segs) + _flatten(medium_segs) + _flatten(low_segs)
+
+
+def _build_audit_result(
+    base_url: str,
+    robots: RobotsResult,
+    llms: LlmsTxtResult,
+    schema: SchemaResult,
+    meta: MetaResult,
+    content: ContentResult,
+    http_status: int,
+    page_size: int,
+    soup=None,
+    soup_clean=None,  # Fix #285: pre-cleaned soup (without script/style) to avoid re-parsing
+    extra_checks: dict | None = None,
+    signals: SignalsResult | None = None,  # v4.0: segnali tecnici
+    ai_discovery=None,  # Standard AI discovery endpoints (.well-known/ai.txt, ecc.)
+    cdn_check=None,  # v4.2: CDN AI Crawler check (#225)
+    js_rendering=None,  # v4.2: JS Rendering check (#226)
+    brand_entity=None,  # v4.3: Brand & Entity signals
+    webmcp=None,  # v4.3: WebMCP Readiness check (#233)
+    multimodal=None,  # Multimodal readiness (informational)
+    negative_signals=None,  # v4.3: Negative Signals detection
+    prompt_injection=None,  # v4.4: Prompt Injection Detection (#276)
+    trust_stack=None,  # v4.5: Trust Stack Score (#273)
+    rag_chunk=None,  # v4.7: RAG Chunk Readiness (#353)
+    embedding_proximity=None,  # v4.7: Embedding Proximity Score (#354)
+    content_decay=None,  # v4.7: Content Decay Predictor (#383)
+    platform_citation=None,  # v4.7: Multi-Platform Citation Profile (#228)
+    context_window=None,  # v4.9: Context Window Optimization (#370)
+    instruction_readiness=None,  # v4.9: Instruction Following Readiness (#371)
+    intent_mapping=None,  # v4.10: AI Search Intent Mapping (#385)
+    hallucination_bait=None,  # v4.10: Hallucination Bait Detection (#377)
+) -> AuditResult:
+    """Build AuditResult from sub-audits (fix #97: shared sync/async logic).
+
+    Computes score, band and recommendations, then runs plugins registered
+    in CheckRegistry (fix #104). Plugin results do not affect the base score.
+
+    Args:
+        base_url: Normalized site URL.
+        robots: robots.txt audit result.
+        llms: llms.txt audit result.
+        schema: JSON-LD schema audit result.
+        meta: Meta tag audit result.
+        content: Content audit result.
+        http_status: HTTP status code of the homepage.
+        page_size: Homepage size in bytes.
+        soup: BeautifulSoup of the homepage (optional, passed to plugins).
+        extra_checks: Dict with pre-computed results (not used internally).
+        signals: Technical signals v4.0 (lang, RSS, freshness).
+
+    Returns:
+        Complete AuditResult with score, band, recommendations and plugins.
+    """
+    from geo_optimizer.core.registry import CheckRegistry
+
+    # Use empty SignalsResult if not provided
+    effective_signals = signals if signals is not None else SignalsResult()
+
+    # Use empty AiDiscoveryResult if not provided
+
+    effective_ai_discovery = ai_discovery if ai_discovery is not None else AiDiscoveryResult()
+
+    # v4.3: use empty BrandEntityResult if not provided
+    effective_brand_entity = brand_entity if brand_entity is not None else BrandEntityResult()
+
+    # v4.3: use empty WebMcpResult if not provided (#233)
+    effective_webmcp = webmcp if webmcp is not None else WebMcpResult()
+
+    # Multimodal readiness: compute from soup if not provided, else empty
+    if multimodal is not None:
+        effective_multimodal = multimodal
+    elif soup is not None:
+        from geo_optimizer.core.audit_multimodal import audit_multimodal_readiness
+
+        effective_multimodal = audit_multimodal_readiness(soup, schema)
+    else:
+        effective_multimodal = MultimodalResult()
+
+    # v4.3: use empty NegativeSignalsResult if not provided
+    effective_negative_signals = negative_signals if negative_signals is not None else NegativeSignalsResult()
+
+    # v4.4: use empty PromptInjectionResult if not provided (#276)
+    from geo_optimizer.models.results import PromptInjectionResult
+
+    effective_prompt_injection = prompt_injection if prompt_injection is not None else PromptInjectionResult()
+
+    # v4.5: use empty TrustStackResult if not provided (#273)
+    from geo_optimizer.models.results import TrustStackResult
+
+    effective_trust_stack = trust_stack if trust_stack is not None else TrustStackResult()
+
+    # v4.7: RAG Chunk Readiness (#353) — compute if not pre-computed
+    if rag_chunk is not None:
+        effective_rag_chunk = rag_chunk
+    elif soup is not None:
+        from geo_optimizer.core.audit_rag import audit_rag_readiness
+
+        effective_rag_chunk = audit_rag_readiness(soup, soup_clean)
+    else:
+        from geo_optimizer.models.results import RagChunkResult
+
+        effective_rag_chunk = RagChunkResult()
+
+    # v4.7: Embedding Proximity Score (#354) — compute if not pre-computed
+    if embedding_proximity is not None:
+        effective_embedding = embedding_proximity
+    elif soup is not None:
+        from geo_optimizer.core.audit_embedding import audit_embedding_proximity
+
+        effective_embedding = audit_embedding_proximity(soup, soup_clean)
+    else:
+        from geo_optimizer.models.results import EmbeddingProximityResult
+
+        effective_embedding = EmbeddingProximityResult()
+
+    # v4.7: Content Decay Predictor (#383)
+    if content_decay is not None:
+        effective_decay = content_decay
+    elif soup is not None:
+        from geo_optimizer.core.audit_decay import audit_content_decay
+
+        effective_decay = audit_content_decay(soup)
+    else:
+        from geo_optimizer.models.results import ContentDecayResult
+
+        effective_decay = ContentDecayResult()
+
+    # v4.9: Context Window Optimization (#370)
+    if context_window is not None:
+        effective_context_window = context_window
+    elif soup is not None:
+        from geo_optimizer.core.audit_context_window import audit_context_window
+
+        effective_context_window = audit_context_window(soup, soup_clean)
+    else:
+        from geo_optimizer.models.results import ContextWindowResult
+
+        effective_context_window = ContextWindowResult()
+
+    # v4.9: Instruction Following Readiness (#371)
+    if instruction_readiness is not None:
+        effective_instruction = instruction_readiness
+    elif soup is not None:
+        from geo_optimizer.core.audit_instruction import audit_instruction_readiness
+
+        effective_instruction = audit_instruction_readiness(soup)
+    else:
+        from geo_optimizer.models.results import InstructionReadinessResult
+
+        effective_instruction = InstructionReadinessResult()
+
+    # v4.10: AI Search Intent Mapping (#385) — compute if not pre-computed
+    if intent_mapping is not None:
+        effective_intent = intent_mapping
+    elif soup is not None:
+        effective_intent = audit_intent_mapping(soup, "", content, meta, schema)
+    else:
+        from geo_optimizer.models.results import IntentMappingResult
+
+        effective_intent = IntentMappingResult()
+
+    # v4.10: Hallucination Bait Detection (#377) — compute if not pre-computed
+    if hallucination_bait is not None:
+        effective_hallucination = hallucination_bait
+    elif soup is not None:
+        from geo_optimizer.core.hallucination_bait import audit_hallucination_bait
+
+        effective_hallucination = audit_hallucination_bait(soup, "", content, meta, schema)
+    else:
+        from geo_optimizer.models.results import HallucinationBaitResult
+
+        effective_hallucination = HallucinationBaitResult()
+
+    # Compute score, breakdown, and band (v4.0: includes signals, ai_discovery, negative_penalty)
+    score = compute_geo_score(
+        robots,
+        llms,
+        schema,
+        meta,
+        content,
+        effective_signals,
+        effective_ai_discovery,
+        effective_brand_entity,
+        effective_negative_signals,
+    )
+    breakdown = compute_score_breakdown(
+        robots,
+        llms,
+        schema,
+        meta,
+        content,
+        effective_signals,
+        effective_ai_discovery,
+        effective_brand_entity,
+        effective_negative_signals,
+    )
+    band = get_score_band(score)
+
+    # Recommendations
+    recommendations = build_recommendations(
+        base_url,
+        robots,
+        llms,
+        schema,
+        meta,
+        content,
+        effective_ai_discovery,
+        effective_signals,
+        effective_brand_entity,
+        effective_webmcp,
+        effective_negative_signals,
+        effective_prompt_injection,
+        score_breakdown=breakdown,
+        multimodal=effective_multimodal,
+    )
+
+    # Fix #460: load entry_point plugins if not already loaded (API + MCP callers)
+    CheckRegistry.load_entry_points()
+
+    # Fix #104: run plugins registered in CheckRegistry
+    # Their results do not affect the base score
+    plugin_results = {}
+    if CheckRegistry.all():
+        check_results = CheckRegistry.run_all(base_url, soup=soup)
+        plugin_results = {
+            r.name: {
+                "score": r.score,
+                "max_score": r.max_score,
+                "passed": r.passed,
+                "message": r.message,
+                "details": r.details,
+            }
+            for r in check_results
+        }
+
+    # Citability Score: content analysis with 47 methods (fix #31)
+    # Fix #285: pass pre-computed soup_clean to avoid re-parsing in citability
+    from geo_optimizer.core.citability import audit_citability
+
+    citability = audit_citability(soup, base_url, soup_clean=soup_clean) if soup else CitabilityResult()
+
+    # v4.2: CDN + JS rendering checks (#225, #226)
+    effective_cdn = cdn_check if cdn_check is not None else CdnAiCrawlerResult()
+    effective_js = js_rendering if js_rendering is not None else JsRenderingResult()
+
+    # Add CDN/JS warnings to recommendations
+    if effective_cdn.checked and effective_cdn.any_blocked:
+        blocked_bots = [b["bot"] for b in effective_cdn.bot_results if b["blocked"] or b["challenge_detected"]]
+        cdn_name = effective_cdn.cdn_detected or "CDN/WAF"
+        recommendations.append(
+            f"⚠️ {cdn_name.upper()} blocks AI crawlers: {', '.join(blocked_bots)}. "
+            f"Configure your CDN to allow AI bot User-Agents ({ROBOTS_KEY_BOTS_DISPLAY})."
+        )
+
+    if effective_js.checked and effective_js.js_dependent:
+        recommendations.append(
+            f"⚠️ Content requires JavaScript to render ({effective_js.raw_word_count} words in raw HTML). "
+            "AI crawlers don't execute JS. Implement SSR, SSG, or pre-rendering."
+        )
+
+    result = AuditResult(
+        url=base_url,
+        score=score,
+        band=band,
+        robots=robots,
+        llms=llms,
+        schema=schema,
+        meta=meta,
+        content=content,
+        citability=citability,
+        recommendations=recommendations,
+        http_status=http_status,
+        page_size=page_size,
+        extra_checks=plugin_results,
+        signals=effective_signals,
+        ai_discovery=effective_ai_discovery,
+        score_breakdown=breakdown,
+        cdn_check=effective_cdn,
+        js_rendering=effective_js,
+        brand_entity=effective_brand_entity,
+        webmcp=effective_webmcp,
+        multimodal=effective_multimodal,
+        negative_signals=effective_negative_signals,
+        prompt_injection=effective_prompt_injection,
+        trust_stack=effective_trust_stack,
+        rag_chunk=effective_rag_chunk,
+        embedding_proximity=effective_embedding,
+        content_decay=effective_decay,
+        context_window=effective_context_window,
+        instruction_readiness=effective_instruction,
+        intent_mapping=effective_intent,
+        hallucination_bait=effective_hallucination,
+    )
+
+    # v4.7: Multi-Platform Citation Profile (#228) — computed post-construction
+    if platform_citation is not None:
+        result.platform_citation = platform_citation
+    else:
+        from geo_optimizer.core.audit_platform import audit_platform_citation
+
+        result.platform_citation = audit_platform_citation(
+            robots=robots,
+            llms=llms,
+            schema=schema,
+            meta=meta,
+            content=content,
+            citability=citability,
+            signals=effective_signals,
+            ai_discovery=effective_ai_discovery,
+            js_rendering=effective_js,
+        )
+
+    return result
+
+
+def run_full_audit(url: str, use_cache: bool = False, project_config=None) -> AuditResult:
+    """Run complete audit and return AuditResult with all sub-results, score, band, and recommendations.
+
+    Args:
+        url: URL of the site to analyze.
+        use_cache: If True, use disk cache for HTTP requests.
+        project_config: Optional ProjectConfig — if it has extra_bots, merges them with AI_BOTS (fix #120).
+    """
+    _t0 = time.perf_counter()
+    from bs4 import BeautifulSoup
+
+    # Fix #120: if config has extra_bots, merge with AI_BOTS for this audit
+    effective_bots = dict(AI_BOTS)
+    if project_config is not None and project_config.extra_bots:
+        effective_bots.update(project_config.extra_bots)
+
+    # Normalize URL
+    base_url = normalize_url_scheme(url.rstrip("/"))
+
+    # Fetch homepage (with optional cache)
+    # r is CachedResponse (disk cache hit) or requests.Response (live fetch)
+    err: str | None
+    if use_cache:
+        from geo_optimizer.utils.cache import FileCache
+
+        cache = FileCache()
+        cached = cache.get(base_url)
+        if cached:
+            # Build response-like object from cache (fix #83: use dataclass)
+            status_code, text, headers = cached
+            r = CachedResponse(
+                status_code=status_code,
+                text=text,
+                content=text.encode("utf-8"),
+                headers=headers,
+            )
+            err = None
+        else:
+            r, err = fetch_url(base_url)  # type: ignore[assignment]
+            if r and not err:
+                cache.put(base_url, r.status_code, r.text, dict(r.headers))
+    else:
+        r, err = fetch_url(base_url)  # type: ignore[assignment]
+    # `r is None`, not `not r`: requests.Response.__bool__ is `ok`, so any 4xx/5xx
+    # is falsy and would land here — reporting "Connection failed" for a request
+    # that succeeded, and skipping the status branch below that exists to name the
+    # code and point at a WAF. Fixes the 403 reported as a connection error.
+    if err or r is None:
+        result = AuditResult(
+            url=base_url,
+            error=str(err) if err else "Connection failed",
+        )
+        result.recommendations = [f"Unable to reach {base_url}: {err or 'connection failed'}"]
+        result.audit_duration_ms = int((time.perf_counter() - _t0) * 1000)
+        return result
+
+    # Fix #337: if homepage returns HTTP error, report it and skip analysis of the error page
+    if r.status_code not in (200, 203):
+        result = AuditResult(
+            url=base_url,
+            http_status=r.status_code,
+            error=f"HTTP {r.status_code}",
+        )
+        result.recommendations = [
+            f"Site returned HTTP {r.status_code}. Check for Cloudflare/WAF blocks or server errors."
+        ]
+        result.audit_duration_ms = int((time.perf_counter() - _t0) * 1000)
+        return result
+
+    import copy
+
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    # Fix #285: compute soup_clean once and pass it to all sub-audits
+    # Avoids 3-4 re-parses of the same HTML (saves 50-200ms per page)
+    soup_clean = copy.deepcopy(soup)
+    for tag in soup_clean(["script", "style"]):
+        tag.decompose()
+
+    # Fetch robots.txt, llms.txt, llms-full.txt and AI discovery with local fetch_url
+    # (identical pattern to the async version — allows mocking with patch on audit.fetch_url)
+    robots_url_full = urljoin(base_url, "/robots.txt")
+    llms_url_full = urljoin(base_url, "/llms.txt")
+    llms_full_url = urljoin(base_url, "/llms-full.txt")
+    ai_txt_url = urljoin(base_url, "/.well-known/ai.txt")
+    ai_summary_url = urljoin(base_url, "/ai/summary.json")
+    ai_faq_url = urljoin(base_url, "/ai/faq.json")
+    ai_service_url = urljoin(base_url, "/ai/service.json")
+
+    r_robots, _ = fetch_url(robots_url_full)
+    r_llms, _ = fetch_url(llms_url_full)
+    r_llms_full, _ = fetch_url(llms_full_url)
+    r_ai_txt, _ = fetch_url(ai_txt_url)
+    r_ai_summary, _ = fetch_url(ai_summary_url)
+    r_ai_faq, _ = fetch_url(ai_faq_url)
+    r_ai_service, _ = fetch_url(ai_service_url)
+
+    # Run all sub-audits using the pre-downloaded responses
+    # Fix #120: pass effective_bots which includes any extra_bots from project_config
+    robots = _audit_robots_from_response(r_robots, bots=effective_bots)
+    llms = _audit_llms_from_response(r_llms, r_full=r_llms_full)
+    schema = audit_schema(soup, base_url)
+    meta = audit_meta_tags(soup, base_url)
+    # gap #2: X-Robots-Tag HTTP header — blocks AI indexing even when robots.txt allows it
+    try:
+        _x_robots = dict(r.headers).get("x-robots-tag") or dict(r.headers).get("X-Robots-Tag") or ""
+    except (TypeError, AttributeError):
+        _x_robots = ""
+    if _x_robots:
+        meta.x_robots_tag = _x_robots
+        if "noindex" in _x_robots.lower():
+            meta.x_robots_noindex = True
+    content = audit_content_quality(soup, base_url, soup_clean=soup_clean)
+
+    # v4.1: AI discovery endpoints audit (usa risposte pre-scaricate)
+    ai_disc = _audit_ai_discovery_from_responses(r_ai_txt, r_ai_summary, r_ai_faq, r_ai_service)
+
+    # v4.2: CDN AI Crawler check (#225) + JS Rendering check (#226)
+    cdn_result = audit_cdn_ai_crawler(base_url)
+    js_result = audit_js_rendering(soup, r.text)
+
+    # Fix #281: compute technical signals (lang, RSS, freshness)
+    signals = audit_signals(soup, schema)
+
+    # v4.3: Brand & Entity signals (zero HTTP requests, uses pre-fetched data only)
+    brand_entity_result = audit_brand_entity(soup, schema, meta, content)
+
+    # v4.3: WebMCP Readiness check (#233) — zero extra HTTP fetch (#535: ai_disc reused)
+    webmcp_result = audit_webmcp_readiness(soup, r.text, schema, ai_disc)
+
+    # v4.3: Negative Signals detection — zero HTTP fetch
+    negative_signals_result = audit_negative_signals(soup, r.text, content, meta, schema)
+
+    # v4.4: Prompt Injection Pattern Detection (#276) — zero HTTP fetch
+    from geo_optimizer.core.injection_detector import audit_prompt_injection
+
+    prompt_injection_result = audit_prompt_injection(soup, r.text)
+
+    # v4.5: Trust Stack Score (#273) — 5-layer aggregation, zero HTTP fetch
+    from geo_optimizer.core.trust_stack import audit_trust_stack
+
+    try:
+        resp_headers = dict(r.headers)
+    except (TypeError, AttributeError):
+        resp_headers = {}
+    trust_stack_result = audit_trust_stack(
+        soup=soup,
+        base_url=base_url,
+        response_headers=resp_headers,
+        brand_entity=brand_entity_result,
+        schema=schema,
+        meta=meta,
+        content=content,
+        negative_signals=negative_signals_result,
+    )
+
+    # Fix #97 + #104: use _build_audit_result for shared logic and plugin integration
+    result = _build_audit_result(
+        base_url=base_url,
+        robots=robots,
+        llms=llms,
+        schema=schema,
+        meta=meta,
+        content=content,
+        http_status=r.status_code,
+        page_size=len(r.text),
+        soup=soup,
+        soup_clean=soup_clean,
+        ai_discovery=ai_disc,
+        cdn_check=cdn_result,
+        js_rendering=js_result,
+        signals=signals,
+        brand_entity=brand_entity_result,
+        webmcp=webmcp_result,
+        negative_signals=negative_signals_result,
+        prompt_injection=prompt_injection_result,
+        trust_stack=trust_stack_result,
+    )
+
+    # gap #10: brand sentiment analysis — opt-in, requires project_config.brand_name
+    _brand_name = getattr(project_config, "brand_name", None)
+    if _brand_name:
+        from geo_optimizer.core.audit_sentiment import audit_brand_sentiment
+
+        result.brand_sentiment = audit_brand_sentiment(
+            _brand_name,
+            provider=getattr(project_config, "llm_provider", None),
+            api_key=getattr(project_config, "llm_api_key", None),
+            model=getattr(project_config, "llm_model", None),
+        )
+
+    result.audit_duration_ms = int((time.perf_counter() - _t0) * 1000)
+    if result.audit_duration_ms > AUDIT_TIMEOUT_SECONDS * 1000:
+        logging.getLogger(__name__).warning(
+            "Audit exceeded %ds budget: %dms for %s", AUDIT_TIMEOUT_SECONDS, result.audit_duration_ms, base_url
+        )
+    return result
+
+
+async def run_full_audit_async(url: str, project_config=None) -> AuditResult:
+    """Async variant of the full audit with parallel fetch (httpx).
+
+    Runs homepage, robots.txt and llms.txt in parallel for a
+    2-3x speedup compared to the synchronous version.
+
+    Note: disk cache (``use_cache``) is not supported in the async path.
+    Use ``run_full_audit(url, use_cache=True)`` when caching is needed.
+
+    Args:
+        url: URL of the site to analyze.
+        project_config: Optional ProjectConfig — if it has extra_bots, merges them with AI_BOTS.
+
+    Requires: pip install geo-optimizer-skill[async]
+    """
+    _t0 = time.perf_counter()
+    from bs4 import BeautifulSoup
+
+    from geo_optimizer.utils.http_async import fetch_urls_async
+
+    # Merge extra_bots from config, same as in the synchronous version
+    effective_bots = dict(AI_BOTS)
+    if project_config is not None and project_config.extra_bots:
+        effective_bots.update(project_config.extra_bots)
+
+    # Normalize URL
+    base_url = normalize_url_scheme(url.rstrip("/"))
+
+    # Parallel fetch: homepage + robots.txt + llms.txt + llms-full.txt + AI discovery
+    robots_url = urljoin(base_url, "/robots.txt")
+    llms_url = urljoin(base_url, "/llms.txt")
+    llms_full_url = urljoin(base_url, "/llms-full.txt")
+    # v4.1: AI discovery endpoints (geo-checklist.dev)
+    ai_txt_url = urljoin(base_url, "/.well-known/ai.txt")
+    ai_summary_url = urljoin(base_url, "/ai/summary.json")
+    ai_faq_url = urljoin(base_url, "/ai/faq.json")
+    ai_service_url = urljoin(base_url, "/ai/service.json")
+
+    responses = await fetch_urls_async(
+        [
+            base_url,
+            robots_url,
+            llms_url,
+            llms_full_url,
+            ai_txt_url,
+            ai_summary_url,
+            ai_faq_url,
+            ai_service_url,
+        ]
+    )
+
+    # Extract responses
+    r_home, err_home = responses.get(base_url, (None, "URL not requested"))
+    r_robots, _ = responses.get(robots_url, (None, None))
+    r_llms, _ = responses.get(llms_url, (None, None))
+    r_llms_full, _ = responses.get(llms_full_url, (None, None))
+    # AI discovery responses
+    r_ai_txt, _ = responses.get(ai_txt_url, (None, None))
+    r_ai_summary, _ = responses.get(ai_summary_url, (None, None))
+    r_ai_faq, _ = responses.get(ai_faq_url, (None, None))
+    r_ai_service, _ = responses.get(ai_service_url, (None, None))
+
+    if err_home or not r_home:
+        result = AuditResult(
+            url=base_url,
+            error=str(err_home) if err_home else "Connection failed",
+        )
+        result.recommendations = [f"Unable to reach {base_url}: {err_home}"]
+        result.audit_duration_ms = int((time.perf_counter() - _t0) * 1000)
+        return result
+
+    # Fix #337: if homepage returns HTTP error, report it and skip analysis of the error page
+    if r_home.status_code not in (200, 203):
+        result = AuditResult(
+            url=base_url,
+            http_status=r_home.status_code,
+            error=f"HTTP {r_home.status_code}",
+        )
+        result.recommendations = [
+            f"Site returned HTTP {r_home.status_code}. Check for Cloudflare/WAF blocks or server errors."
+        ]
+        result.audit_duration_ms = int((time.perf_counter() - _t0) * 1000)
+        return result
+
+    import copy
+
+    soup = BeautifulSoup(r_home.text, "html.parser")
+
+    # Fix #285: compute soup_clean once for the async path
+    soup_clean = copy.deepcopy(soup)
+    for tag in soup_clean(["script", "style"]):
+        tag.decompose()
+
+    # Sub-audit robots.txt (uses pre-fetched response with extra_bots)
+    robots = _audit_robots_from_response(r_robots, bots=effective_bots)
+
+    # Sub-audit llms.txt (uses pre-fetched response)
+    llms = _audit_llms_from_response(r_llms, r_full=r_llms_full)
+
+    # Sub-audits that work on the DOM (no additional fetch required)
+    schema = audit_schema(soup, base_url)
+    meta = audit_meta_tags(soup, base_url)
+    # gap #2: X-Robots-Tag HTTP header — blocks AI indexing even when robots.txt allows it
+    try:
+        _x_robots_async = dict(r_home.headers).get("x-robots-tag") or dict(r_home.headers).get("X-Robots-Tag") or ""
+    except (TypeError, AttributeError):
+        _x_robots_async = ""
+    if _x_robots_async:
+        meta.x_robots_tag = _x_robots_async
+        if "noindex" in _x_robots_async.lower():
+            meta.x_robots_noindex = True
+    content = audit_content_quality(soup, base_url, soup_clean=soup_clean)
+
+    # v4.1: AI discovery from pre-fetched responses
+    ai_disc = _audit_ai_discovery_from_responses(r_ai_txt, r_ai_summary, r_ai_faq, r_ai_service)
+
+    # v4.2: CDN AI Crawler check (#225) + JS Rendering check (#226)
+    # Fix: wrap synchronous calls with asyncio.to_thread to avoid blocking the event loop
+    cdn_result = await asyncio.to_thread(audit_cdn_ai_crawler, base_url)
+    js_result = audit_js_rendering(soup, r_home.text)
+
+    # Fix #281: compute technical signals (lang, RSS, freshness)
+    signals = audit_signals(soup, schema)
+
+    # v4.3: Brand & Entity signals (zero HTTP requests, uses pre-fetched data only)
+    brand_entity_result = audit_brand_entity(soup, schema, meta, content)
+
+    # v4.3: WebMCP Readiness check (#233) — zero extra HTTP fetch (#535: ai_disc reused)
+    webmcp_result = audit_webmcp_readiness(soup, r_home.text, schema, ai_disc)
+
+    # v4.3: Negative Signals detection — zero HTTP fetch
+    negative_signals_result = audit_negative_signals(soup, r_home.text, content, meta, schema)
+
+    # v4.4: Prompt Injection Pattern Detection (#276) — zero HTTP fetch
+    from geo_optimizer.core.injection_detector import audit_prompt_injection
+
+    prompt_injection_result = audit_prompt_injection(soup, r_home.text)
+
+    # v4.5: Trust Stack Score (#273) — 5-layer aggregation, zero HTTP fetch
+    from geo_optimizer.core.trust_stack import audit_trust_stack
+
+    try:
+        resp_headers_async = dict(r_home.headers)
+    except (TypeError, AttributeError):
+        resp_headers_async = {}
+    trust_stack_result = audit_trust_stack(
+        soup=soup,
+        base_url=base_url,
+        response_headers=resp_headers_async,
+        brand_entity=brand_entity_result,
+        schema=schema,
+        meta=meta,
+        content=content,
+        negative_signals=negative_signals_result,
+    )
+
+    # Fix #97 + #104: use _build_audit_result for shared logic and plugin integration
+    result = _build_audit_result(
+        base_url=base_url,
+        robots=robots,
+        llms=llms,
+        schema=schema,
+        meta=meta,
+        content=content,
+        http_status=r_home.status_code,
+        page_size=len(r_home.text),
+        soup=soup,
+        soup_clean=soup_clean,
+        ai_discovery=ai_disc,
+        cdn_check=cdn_result,
+        js_rendering=js_result,
+        signals=signals,
+        brand_entity=brand_entity_result,
+        webmcp=webmcp_result,
+        negative_signals=negative_signals_result,
+        prompt_injection=prompt_injection_result,
+        trust_stack=trust_stack_result,
+    )
+
+    # gap #10: brand sentiment analysis — opt-in, requires project_config.brand_name
+    _brand_name = getattr(project_config, "brand_name", None)
+    if _brand_name:
+        from geo_optimizer.core.audit_sentiment import audit_brand_sentiment
+
+        result.brand_sentiment = await asyncio.to_thread(
+            audit_brand_sentiment,
+            _brand_name,
+            provider=getattr(project_config, "llm_provider", None),
+            api_key=getattr(project_config, "llm_api_key", None),
+            model=getattr(project_config, "llm_model", None),
+        )
+
+    result.audit_duration_ms = int((time.perf_counter() - _t0) * 1000)
+    if result.audit_duration_ms > AUDIT_TIMEOUT_SECONDS * 1000:
+        logging.getLogger(__name__).warning(
+            "Audit exceeded %ds budget: %dms for %s", AUDIT_TIMEOUT_SECONDS, result.audit_duration_ms, base_url
+        )
+    return result

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 240" width="760" height="240" role="img" aria-label="GeoReady — GEO Optimizer">
+  <defs>
+    <linearGradient id="panel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1220"/>
+      <stop offset="55%" stop-color="#0E1A2B"/>
+      <stop offset="100%" stop-color="#0A2A2A"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2DD4BF"/>
+      <stop offset="100%" stop-color="#0D9488"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Branded panel: dark so the lockup reads on both GitHub light and dark themes -->
+  <rect width="760" height="240" rx="24" fill="url(#panel)"/>
+
+  <!-- Official Pulse mark (teal rounded square + arc + wave), scaled 2.4x, centered at left -->
+  <g transform="translate(56,72) scale(2.0)">
+    <rect width="48" height="48" rx="11" fill="url(#teal)"/>
+    <path d="M11.74 13.71 A16 16 0 1 1 11.74 34.29" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M8 24 C12 14 18 34 24 24 C30 14 36 34 40 24" fill="none" stroke="white" stroke-width="2.1" stroke-linecap="round" stroke-opacity="0.72"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="184" y="104" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="-1.5">
+    <tspan fill="#2DD4BF">Geo</tspan><tspan fill="#FFFFFF">Ready</tspan>
+  </text>
+
+  <!-- Engine label -->
+  <text x="186" y="146" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace" font-size="17" letter-spacing="2" fill="#5EEAD4">GEO OPTIMIZER · OPEN SOURCE ENGINE</text>
+
+  <!-- Tagline -->
+  <text x="186" y="184" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="20" fill="#CBD5E1">Get cited by ChatGPT, Perplexity &amp; Gemini.</text>
+</svg>

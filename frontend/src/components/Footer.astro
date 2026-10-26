@@ -1,0 +1,56 @@
+---
+// I link esterni portano `cta` per far scattare geo_cta_clicked via ctaTracking
+// (listener delegato già caricato da Shell.astro).
+const footerLinks: { label: string; href: string; cta?: string }[] = [
+  { label: "GitHub", href: "https://github.com/skywalkerqqq/geo-optimizer-skill", cta: "footer_github" },
+  { label: "Docs", href: "https://auriti-labs.github.io/geo-optimizer-skill/", cta: "footer_docs" },
+  { label: "PyPI", href: "https://pypi.org/project/geo-optimizer-skill/", cta: "footer_pypi" },
+  { label: "Methodology", href: "/methodology/" },
+  { label: "Pricing", href: "/pricing/" },
+  { label: "About", href: "/about/" },
+  { label: "Privacy", href: "/privacy/" },
+  { label: "Cookies", href: "/cookie-policy/" },
+];
+---
+
+<footer class="mt-auto bg-bg-dark text-text-inverse border-t border-border-dark">
+  <div class="max-w-7xl mx-auto px-6 py-10">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-2.5">
+        <svg width="24" height="24" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="48" height="48" rx="11" fill="#0D9488"/>
+          <path d="M11.74 13.71 A16 16 0 1 1 11.74 34.29" stroke="white" stroke-width="2.8" stroke-linecap="round"/>
+          <path d="M8 24 C12 14 18 34 24 24 C30 14 36 34 40 24" stroke="white" stroke-width="2.1" stroke-linecap="round" stroke-opacity="0.72"/>
+        </svg>
+        <span class="font-display font-bold text-sm">
+          <span class="text-accent-teal">Geo</span><span class="text-text-inverse">Ready</span>
+        </span>
+        <span class="font-mono text-[10px] text-text-muted">v{__ENGINE_VERSION__}</span>
+      </div>
+
+      <nav class="flex flex-wrap items-center gap-6">
+        {footerLinks.map((l) => (
+          <a
+            href={l.href}
+            class="text-sm text-text-muted hover:text-text-inverse transition-colors"
+            target={l.href.startsWith('http') ? '_blank' : undefined}
+            rel={l.href.startsWith('http') ? 'noopener' : undefined}
+            data-cta={l.cta}
+          >
+            {l.label}
+          </a>
+        ))}
+      </nav>
+    </div>
+
+    <div class="mt-8 pt-6 border-t border-border-dark flex flex-col items-center gap-5 text-center">
+      <!-- Launchpadly — GeoReady (light) -->
+      <a href="https://launchpadly.co/startup/geoready" target="_blank" rel="noopener noreferrer" data-launchpadly-badge="geoready" data-launchpadly-badge-variant="light">
+        <img src="https://launchpadly.co/embed/badges/startup/geoready.svg?variant=light" alt="Launchpadly Startup Directory" width="220" height="48" style="display:block;border:0;" />
+      </a>
+      <p class="text-xs text-text-muted">
+        Built in Italy by skywalkerqqq. Designed for the global AI search ecosystem. Powered by Princeton KDD 2024 + AutoGEO ICLR 2026 research.
+      </p>
+    </div>
+  </div>
+</footer>

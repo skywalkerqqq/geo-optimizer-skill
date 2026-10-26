@@ -1,0 +1,176 @@
+@import "tailwindcss";
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/geist/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/newsreader/400.css";
+@import "@fontsource/newsreader/400-italic.css";
+@import "@fontsource/newsreader/700.css";
+
+/* Font self-hosted da /public/fonts con font-display: optional per eliminare lo swap
+   tardivo che causava CLS ~0.11 su mobile (rete lenta) su /pricing/ e /best-geo-tools/.
+   - Space Grotesk 700 (heading/LCP) e Geist 400 (body): anche preloadati in Layout.astro.
+   - Geist 500/600: usati dal cookie banner (font-medium/font-semibold); il loro swap tardivo
+     ne cambiava la metrica facendo crescere il banner (bottom:0) → self-shift CLS. Self-hostati
+     con optional per azzerare lo shift, senza preload (non above-the-fold critici).
+   I pesi non critici (SG 400/500/600, Geist 700, mono, editorial) restano via @import. */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-display: optional;
+  font-weight: 700;
+  src: url(/fonts/space-grotesk-latin-700-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-display: optional;
+  font-weight: 700;
+  src: url(/fonts/space-grotesk-latin-ext-700-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-display: optional;
+  font-weight: 400;
+  src: url(/fonts/geist-latin-400-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-display: optional;
+  font-weight: 400;
+  src: url(/fonts/geist-latin-ext-400-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-display: optional;
+  font-weight: 500;
+  src: url(/fonts/geist-latin-500-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-display: optional;
+  font-weight: 500;
+  src: url(/fonts/geist-latin-ext-500-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-display: optional;
+  font-weight: 600;
+  src: url(/fonts/geist-latin-600-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-display: optional;
+  font-weight: 600;
+  src: url(/fonts/geist-latin-ext-600-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+@theme {
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Geist", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-editorial: "Newsreader", serif;
+
+  --color-bg-base: #F7F5F0;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-subtle: #EEEBE5;
+  --color-bg-dark: #0B0F19;
+  --color-bg-dark-surface: #111827;
+
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #5B6573;
+  --color-text-inverse: #F1F5F9;
+
+  --color-accent-teal: #0F766E;
+  --color-accent-teal-dark: #115E59;
+  --color-accent-electric: #4F46E5;
+  --color-accent-violet: #6D28D9;
+  --color-accent-success: #065F46;
+  --color-accent-warning: #D97706;
+  --color-accent-danger: #DC2626;
+
+  --color-border: #E2E0DA;
+  --color-border-dark: #1E293B;
+  --color-border-accent: #0D9488;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-2xl: 36px;
+}
+
+html {
+  font-family: var(--font-body);
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.bg-bg-dark,
+[data-hero-bleed].bg-bg-dark {
+  --color-text-muted: #94A3B8;
+}
+
+.bg-bg-dark .text-accent-teal,
+[data-hero-bleed].bg-bg-dark .text-accent-teal {
+  color: #5EEAD4;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-mono);
+}
+
+.font-editorial {
+  font-family: var(--font-editorial);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent-teal);
+  outline-offset: 2px;
+}
+
+.site-main :where(p, li) a[class*="text-accent-teal"] {
+  text-decoration-line: underline;
+  text-underline-offset: 2px;
+}
+
+::selection {
+  background-color: rgba(13, 148, 136, 0.2);
+  color: var(--color-text-primary);
+}

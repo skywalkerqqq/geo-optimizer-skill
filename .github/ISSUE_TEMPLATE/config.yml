@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://skywalkerqqq.it/docs/geo-optimizer/
+    about: Check the docs before opening an issue
+  - name: 💬 Discussions
+    url: https://github.com/skywalkerqqq/geo-optimizer-skill/discussions
+    about: Ask questions or share ideas

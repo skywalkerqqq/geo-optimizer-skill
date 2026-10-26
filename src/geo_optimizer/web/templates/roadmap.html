@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html __GEO_HTML_LANG_ATTR__>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__I18N_TITLE__</title>
+<meta name="description" content="__I18N_META_DESC__">
+<link rel="canonical" href="https://skywalkerqqq.github.io/geo-optimizer-skill/roadmap">
+<meta property="og:type" content="website">
+<meta property="og:title" content="__I18N_OG_TITLE__">
+<meta property="og:description" content="__I18N_OG_DESC__">
+<meta property="og:url" content="https://skywalkerqqq.github.io/geo-optimizer-skill/roadmap">
+<meta property="og:image" content="https://skywalkerqqq.github.io/geo-optimizer-skill/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="GEO Optimizer">
+<meta property="og:locale" content="__I18N_OG_LOCALE__">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#06080f;--bg-card:#0d1117;--border:#1b2332;--text:#e2e8f0;--text-dim:#64748b;--text-muted:#475569;
+--accent:#3b82f6;--accent2:#8b5cf6;--green:#22c55e;--font:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;--radius:12px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.03;
+background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+a{color:var(--accent);text-decoration:none}
+.wrapper{position:relative;z-index:1;max-width:700px;margin:0 auto;padding:2rem 1.5rem}
+/* ─── Professional Nav ─── */
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;margin-bottom:2.5rem;background:rgba(6,8,15,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);border-radius:0 0 var(--radius-sm) var(--radius-sm)}
+.nav-logo{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:.95rem;color:var(--text);white-space:nowrap;text-decoration:none}
+.nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 6px var(--green)}
+.nav-logo .ver{font-family:var(--mono);font-size:.65rem;color:var(--accent);background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);padding:.1rem .4rem;border-radius:20px;margin-left:.25rem}
+.nav-links{display:flex;align-items:center;gap:1.75rem}
+.nav-links a{color:var(--text-dim);font-size:.82rem;font-weight:500;letter-spacing:.02em;transition:color .2s;white-space:nowrap;text-decoration:none}
+.nav-links a:hover,.nav-links a.active{color:var(--text)}
+.nav-sep{width:1px;height:16px;background:var(--border);flex-shrink:0}
+.nav-dropdown{position:relative}
+.nav-dropdown-toggle{display:flex;align-items:center;gap:.3rem;color:var(--text-dim);font-size:.82rem;font-weight:500;letter-spacing:.02em;cursor:pointer;transition:color .2s;white-space:nowrap;background:none;border:none;font-family:inherit;padding:0}
+.nav-dropdown-toggle:hover,.nav-dropdown.open .nav-dropdown-toggle{color:var(--text)}
+.nav-dropdown-toggle svg{width:10px;height:10px;fill:currentColor;transition:transform .2s}
+.nav-dropdown.open .nav-dropdown-toggle svg{transform:rotate(180deg)}
+.nav-dropdown-menu{display:none;position:absolute;top:calc(100% + .75rem);right:0;min-width:160px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.35rem;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.nav-dropdown.open .nav-dropdown-menu{display:block}
+.nav-dropdown-menu a{display:block;padding:.5rem .75rem;color:var(--text-dim);font-size:.82rem;font-weight:500;border-radius:6px;transition:all .15s;text-decoration:none}
+.nav-dropdown-menu a:hover{color:var(--text);background:var(--bg-card-hover)}
+.nav-dropdown-menu a.active{color:var(--text)}
+.nav-cta{display:flex;align-items:center;gap:.4rem;color:var(--text-dim);font-size:.82rem;font-weight:500;border:1px solid var(--border);padding:.35rem .75rem;border-radius:20px;transition:all .2s;white-space:nowrap;text-decoration:none}
+.nav-cta:hover{color:var(--text);border-color:var(--border-hover)}
+.nav-cta svg{width:14px;height:14px;fill:currentColor;flex-shrink:0}
+.nav-cta .star-count{font-family:var(--mono);font-size:.75rem}
+.nav-hamburger{display:none;background:none;border:1px solid var(--border);color:var(--text-dim);padding:.3rem .5rem;border-radius:6px;cursor:pointer;font-size:1.1rem;line-height:1;transition:all .2s}
+.nav-hamburger:hover{border-color:var(--border-hover);color:var(--text)}
+@media(max-width:768px){
+  nav{flex-wrap:wrap;gap:.5rem;padding:.6rem .75rem}
+  .nav-links{display:none;width:100%;flex-direction:column;gap:0;border-top:1px solid var(--border);padding-top:.5rem;margin-top:.25rem}
+  .nav-links.open{display:flex}
+  .nav-links a{padding:.55rem .25rem;border-bottom:1px solid var(--border);font-size:.9rem}
+  .nav-links a:last-child{border-bottom:none}
+  .nav-sep{display:none}
+  .nav-dropdown{width:100%}
+  .nav-dropdown-toggle{padding:.55rem .25rem;border-bottom:1px solid var(--border);font-size:.9rem;width:100%}
+  .nav-dropdown-menu{position:static;border:none;box-shadow:none;background:transparent;padding:0 0 0 1rem;display:none}
+  .nav-dropdown.open .nav-dropdown-menu{display:block}
+  .nav-dropdown-menu a{padding:.45rem .25rem;border-bottom:1px solid var(--border);border-radius:0}
+  .nav-hamburger{display:block}
+  .nav-logo .ver{display:none}
+  .nav-cta .star-count{display:none}
+}
+@media(max-width:480px){
+  .nav-cta span:not(.star-count){font-size:.8rem}
+}
+.hero{text-align:center;margin-bottom:2.5rem}
+.hero h1{font-size:2.4rem;font-weight:700;letter-spacing:-.03em;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:var(--text-dim);margin-top:.4rem}
+.phase{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem;border-left:3px solid}
+.phase-now{border-left-color:var(--green)}.phase-next{border-left-color:var(--accent)}.phase-later{border-left-color:var(--text-muted)}
+.phase h2{font-size:1.1rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
+.tag{font-size:.65rem;font-weight:600;padding:.15rem .5rem;border-radius:12px;text-transform:uppercase;letter-spacing:.05em}
+.tag-now{background:rgba(34,197,94,.15);color:var(--green)}.tag-next{background:rgba(59,130,246,.15);color:var(--accent)}.tag-later{background:rgba(100,116,139,.15);color:var(--text-muted)}
+.phase ul{list-style:none}
+.phase li{padding:.35rem 0;color:var(--text-dim);font-size:.9rem;padding-left:1.25rem;position:relative}
+.phase li::before{content:'';position:absolute;left:0;top:.6rem;width:6px;height:6px;border-radius:50%}
+.phase-now li::before{background:var(--green)}.phase-next li::before{background:var(--accent)}.phase-later li::before{background:var(--text-muted)}
+.note{text-align:center;color:var(--text-muted);font-size:.85rem;margin-top:1.5rem}
+footer{text-align:center;padding:2rem 0 1rem;border-top:1px solid var(--border);margin-top:2rem;color:var(--text-muted);font-size:.8rem}
+footer a{color:var(--text-muted)}
+
+/* ─── Floating cookie settings button ─── */
+.cookie-float-btn {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  z-index: 9990;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(13, 17, 23, 0.9);
+  border: 1px solid #1b2332;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  color: #64748b;
+  transition: color 0.2s, border-color 0.2s;
+}
+.cookie-float-btn:hover { color: #e2e8f0; border-color: #3b82f6; }
+.cookie-float-btn svg { width: 20px; height: 20px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav>
+    <div class="nav-logo">
+      <span class="dot"></span>
+      <span>GEO Optimizer</span>
+      <span class="ver" id="nav-ver">v4.0.0</span>
+    </div>
+    <button class="nav-hamburger" id="nav-ham" aria-label="__I18N_ARIA_MENU__">&#9776;</button>
+    <div class="nav-links">
+      <a href="/">__I18N_NAV_AUDIT__</a>
+      <a href="/compare">__I18N_NAV_COMPARE__</a>
+      <a href="https://auriti-labs.github.io/geo-optimizer-skill/">__I18N_NAV_DOCS__</a>
+      <span class="nav-sep"></span>
+      <div class="nav-dropdown">
+        <button class="nav-dropdown-toggle" aria-expanded="false">__I18N_NAV_MORE__ <svg viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="nav-dropdown-menu">
+          <a href="/research">__I18N_NAV_RESEARCH__</a>
+          <a href="/roadmap" class="active">__I18N_NAV_ROADMAP__</a>
+          <a href="/manifesto">__I18N_NAV_MANIFESTO__</a>
+        </div>
+      </div>
+    </div>
+    <a class="nav-cta" href="https://github.com/skywalkerqqq/geo-optimizer-skill" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" fill="currentColor"/></svg>
+      __I18N_NAV_GITHUB__
+      <span class="star-count" id="nav-stars"></span>
+    </a>
+  </nav>
+  <div class="hero"><h1>__I18N_HERO_H1__</h1><p>__I18N_HERO_P__</p></div>
+
+  <div class="phase phase-now">
+    <h2><span class="tag tag-now">__I18N_PHASE_NOW_TAG__</span> __I18N_PHASE_NOW_HEAD__</h2>
+    <ul>
+      <li>__I18N_PHASE_NOW_L1__</li>
+      <li>__I18N_PHASE_NOW_L2__</li>
+      <li>__I18N_PHASE_NOW_L3__</li>
+      <li>__I18N_PHASE_NOW_L4__</li>
+      <li>__I18N_PHASE_NOW_L5__</li>
+    </ul>
+  </div>
+  <div class="phase phase-next">
+    <h2><span class="tag tag-next">__I18N_PHASE_NEXT_TAG__</span> __I18N_PHASE_NEXT_HEAD__</h2>
+    <ul>
+      <li>__I18N_PHASE_NEXT_L1__</li>
+      <li>__I18N_PHASE_NEXT_L2__</li>
+      <li>__I18N_PHASE_NEXT_L3__</li>
+      <li>__I18N_PHASE_NEXT_L4__</li>
+      <li>__I18N_PHASE_NEXT_L5__</li>
+    </ul>
+  </div>
+  <div class="phase phase-later">
+    <h2><span class="tag tag-later">__I18N_PHASE_LATER_TAG__</span> __I18N_PHASE_LATER_HEAD__</h2>
+    <ul>
+      <li>__I18N_PHASE_LATER_L1__</li>
+      <li>__I18N_PHASE_LATER_L2__</li>
+      <li>__I18N_PHASE_LATER_L3__</li>
+      <li>__I18N_PHASE_LATER_L4__</li>
+    </ul>
+  </div>
+
+  <p class="note">__I18N_NOTE_LEAD__ <a href="https://github.com/skywalkerqqq/geo-optimizer-skill/issues">__I18N_NOTE_ISSUE__</a> __I18N_NOTE_OR__ <a href="https://github.com/skywalkerqqq/geo-optimizer-skill/discussions">__I18N_NOTE_DISCUSSION__</a>__I18N_NOTE_TAIL__</p>
+  <footer><a href="https://github.com/skywalkerqqq/geo-optimizer-skill">GitHub</a> &middot; <a href="https://auriti-labs.github.io/geo-optimizer-skill/">Docs</a> &middot; <a href="https://pypi.org/project/geo-optimizer-skill/">PyPI</a></footer>
+</div>
+<script__NONCE_ATTR__>
+fetch('/api/stats').then(function(r){return r.json()}).then(function(d){var ns=document.getElementById('nav-stars');if(ns&&d.github_stars)ns.textContent='★ '+d.github_stars}).catch(function(){});
+document.getElementById('nav-ham').addEventListener('click',function(){
+  document.querySelector('.nav-links').classList.toggle('open');
+  this.textContent=this.textContent==='☰'?'✕':'☰';
+});
+document.querySelectorAll('.nav-dropdown-toggle').forEach(function(btn){
+  btn.addEventListener('click',function(e){
+    e.stopPropagation();
+    var dd=this.closest('.nav-dropdown');
+    dd.classList.toggle('open');
+    this.setAttribute('aria-expanded',dd.classList.contains('open'));
+  });
+});
+document.addEventListener('click',function(){
+  document.querySelectorAll('.nav-dropdown.open').forEach(function(dd){
+    dd.classList.remove('open');
+    dd.querySelector('.nav-dropdown-toggle').setAttribute('aria-expanded','false');
+  });
+});
+</script>
+
+<!-- Floating cookie settings button: link alle impostazioni cookie -->
+<a href="/privacy#cookies" class="cookie-float-btn" title="__I18N_TITLE_COOKIE__" aria-label="__I18N_ARIA_COOKIE__">
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+    <circle cx="8" cy="9" r="1.5" fill="currentColor"/>
+    <circle cx="15" cy="8" r="1" fill="currentColor"/>
+    <circle cx="14" cy="14" r="1.5" fill="currentColor"/>
+    <circle cx="9" cy="15" r="1" fill="currentColor"/>
+    <circle cx="17" cy="13" r="1" fill="currentColor"/>
+  </svg>
+</a>
+
+</body>
+</html>

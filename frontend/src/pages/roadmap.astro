@@ -1,0 +1,162 @@
+---
+import Shell from '../components/Shell.astro';
+import RoadmapPhase from '../components/content/RoadmapPhase.astro';
+import { roadmapPhases, releaseCadence } from '../lib/roadmapContent';
+---
+
+<Shell title="GeoReady Roadmap — AI SEO, GEO Monitoring & AI Visibility" description="See the GeoReady roadmap for AI SEO audits, GEO monitoring, AI visibility tracking, crawler analysis, API access and platform features." canonical="https://geoready.dev/roadmap/">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-16">
+    {/* Hero */}
+    <header class="max-w-2xl mb-14 md:mb-20">
+      <div class="flex items-center gap-2 text-[10px] font-mono text-text-muted uppercase tracking-wider">
+        <span>GeoReady</span>
+        <span class="w-1 h-1 rounded-full bg-text-muted" aria-hidden="true" />
+        <span>Roadmap</span>
+      </div>
+
+      <h1 class="mt-3 font-display text-3xl md:text-4xl font-bold text-text-primary leading-tight tracking-tight">
+        GeoReady Roadmap — AI Visibility & GEO Monitoring
+      </h1>
+
+      <p class="mt-3 text-lg font-medium text-text-secondary italic">
+        Focused waves, not noisy patches.
+      </p>
+
+      <p class="mt-4 text-base text-text-secondary leading-relaxed max-w-2xl">
+        GEO Optimizer evolves through deliberate releases focused on signal quality, auditability, retrieval visibility, and developer workflows.
+      </p>
+      <p class="mt-2 text-xs text-text-muted font-mono">Last updated: August 2026 · v{__ENGINE_VERSION__}</p>
+    </header>
+
+    {/* Legend */}
+    <div class="flex flex-wrap items-center gap-4 mb-10 text-[11px] font-mono text-text-muted">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-accent-success" />
+        Available
+      </span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-accent-warning" />
+        In progress
+      </span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-accent-teal" />
+        Planned
+      </span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-text-muted" />
+        Exploring
+      </span>
+    </div>
+
+    {/* Phases */}
+    <div class="space-y-14 md:space-y-20">
+      {roadmapPhases.map((phase) => (
+        <RoadmapPhase phase={phase} />
+      ))}
+    </div>
+
+    {/* Release cadence */}
+    <section class="mt-16 md:mt-24 border-t border-border pt-10">
+      <h2 class="font-display text-lg md:text-xl font-bold text-text-primary mb-2">
+        Release direction
+      </h2>
+      <p class="text-sm text-text-muted mb-6 max-w-xl">
+        These are planned directions, not rigid promises. Names reflect the thematic focus of each release.
+      </p>
+
+      <div class="flex flex-wrap gap-3">
+        {releaseCadence.map((rel) => {
+          const isAvailable = rel.status === 'available';
+          const isExploring = rel.status === 'exploring';
+          return (
+            <div
+              class={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                isAvailable
+                  ? 'border-accent-success/30 bg-accent-success/5 text-text-primary'
+                  : isExploring
+                    ? 'border-text-muted/30 bg-text-muted/5 text-text-muted'
+                    : 'border-border bg-bg-surface text-text-secondary'
+              }`}
+            >
+              <span class={`w-2 h-2 rounded-full ${isAvailable ? 'bg-accent-success' : isExploring ? 'bg-text-muted' : 'bg-accent-teal'}`} aria-hidden="true" />
+              <span class="sr-only">{isAvailable ? 'Available' : isExploring ? 'Exploring' : 'Planned'}: </span>
+              <span class="font-mono text-xs font-semibold">{rel.version}</span>
+              <span class="text-xs">{rel.name}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+
+    {/* CTA */}
+    <section class="mt-14 md:mt-20 rounded-xl border border-border bg-bg-surface p-6 md:p-8">
+      <h2 class="font-display text-lg font-bold text-text-primary">
+        Want to influence the roadmap?
+      </h2>
+      <p class="mt-2 text-sm text-text-secondary leading-relaxed max-w-xl">
+        GEO Optimizer is open source. The best way to shape its direction is to open an issue, start a discussion, or star the project on GitHub.
+      </p>
+      <div class="mt-4 flex flex-wrap gap-3">
+        <a
+          href="https://github.com/skywalkerqqq/geo-optimizer-skill/issues"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-lg bg-accent-teal px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+        >
+          Open an issue
+          <span class="sr-only">(opens in a new tab)</span>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+        </a>
+        <a
+          href="https://github.com/skywalkerqqq/geo-optimizer-skill/discussions"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-primary hover:border-accent-teal/30 transition-colors"
+        >
+          Start a discussion
+          <span class="sr-only">(opens in a new tab)</span>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+        </a>
+        <a
+          href="https://github.com/skywalkerqqq/geo-optimizer-skill"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-primary hover:border-accent-teal/30 transition-colors"
+        >
+          Star on GitHub
+          <span class="sr-only">(opens in a new tab)</span>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+        </a>
+      </div>
+    </section>
+  </div>
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "GeoReady Roadmap — AI SEO, GEO Monitoring & AI Visibility",
+    "url": "https://geoready.dev/roadmap/",
+    "description": "See the GeoReady roadmap for AI SEO audits, GEO monitoring, AI visibility tracking, crawler analysis, API access and platform features.",
+    "author": {
+      "@type": "Organization",
+      "name": "skywalkerqqq",
+      "url": "https://github.com/skywalkerqqq"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "skywalkerqqq",
+      "url": "https://github.com/skywalkerqqq"
+    },
+    "datePublished": "2026-05-12",
+    "dateModified": "2026-06-18",
+    "mainEntity": {
+      "@type": "ItemList",
+      "itemListElement": roadmapPhases.map((phase, i) => ({
+        "@type": "ListItem",
+        "position": i + 1,
+        "name": phase.label,
+        "description": phase.subtitle
+      }))
+    }
+  })} />
+</Shell>

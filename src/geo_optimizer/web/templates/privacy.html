@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html __GEO_HTML_LANG_ATTR__>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__I18N_TITLE__</title>
+<meta name="description" content="__I18N_META_DESC__">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+:root {
+  --bg: #06080f;
+  --bg-card: #0d1117;
+  --border: #1b2332;
+  --text: #e2e8f0;
+  --text-dim: #64748b;
+  --text-muted: #475569;
+  --accent: #3b82f6;
+  --accent2: #8b5cf6;
+  --radius: 12px;
+  --font: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── Layout ─── */
+.wrapper {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* ─── Nav ─── */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 2.5rem;
+  background: rgba(6, 8, 15, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.nav-logo .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+}
+
+.nav-links { display: flex; align-items: center; gap: 1.75rem; }
+.nav-links a {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition: color 0.2s;
+  text-decoration: none;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.nav-cta:hover { color: var(--text); border-color: var(--border-hover); }
+.nav-cta svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
+.nav-hamburger {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* ─── Content ─── */
+.page-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.page-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 1rem;
+}
+
+.page-header p {
+  color: var(--text-dim);
+  font-size: 1.05rem;
+}
+
+.legal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2.5rem;
+  margin-bottom: 2rem;
+}
+
+.legal-content h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.legal-content h2:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.legal-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.legal-content p {
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin-bottom: 0.75rem;
+}
+
+.legal-content ul,
+.legal-content ol {
+  margin: 0.75rem 0 0.75rem 1.5rem;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+
+.legal-content li {
+  margin-bottom: 0.5rem;
+}
+
+.legal-content a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.legal-content a:hover { color: var(--accent2); }
+
+/* ─── Table ─── */
+.legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.legal-table th,
+.legal-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.legal-table th {
+  color: var(--text);
+  font-weight: 600;
+  background: var(--bg-card-hover);
+}
+
+.legal-table td {
+  color: var(--text-dim);
+}
+
+/* ─── Info Box ─── */
+.info-box {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+}
+
+.info-box p {
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ─── Footer ─── */
+footer {
+  text-align: center;
+  padding: 2rem 0 1rem;
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+footer .links {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+footer .links a {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  nav { flex-wrap: wrap; gap: 0.5rem; padding: 0.6rem 0.75rem; }
+  .nav-links {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    gap: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+  }
+  .nav-links.open { display: flex; }
+  .nav-links a { padding: 0.55rem 0.25rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  .nav-sep { display: none; }
+  .nav-dropdown { width: 100%; }
+  .nav-dropdown-toggle { padding: 0.55rem 0.25rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; width: 100%; }
+  .nav-dropdown-menu { position: static; border: none; box-shadow: none; background: transparent; padding: 0 0 0 1rem; display: none; }
+  .nav-dropdown.open .nav-dropdown-menu { display: block; }
+  .nav-dropdown-menu a { padding: 0.45rem 0.25rem; border-bottom: 1px solid var(--border); border-radius: 0; }
+  .nav-hamburger { display: block; }
+  .page-header h1 { font-size: 1.75rem; }
+  .legal-content { padding: 1.5rem; }
+}
+
+/* ─── Utility ─── */
+.text-muted { color: var(--text-muted); }
+.text-accent { color: var(--accent); }
+.text-bold { font-weight: 600; }
+.gdpr-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--green);
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ─── Floating cookie button ─── */
+.cookie-float-btn {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  z-index: 9990;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(13, 17, 23, 0.9);
+  border: 1px solid #1b2332;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  color: #64748b;
+  transition: color 0.2s, border-color 0.2s;
+  position: fixed;
+}
+.cookie-float-btn:hover { color: #e2e8f0; border-color: #3b82f6; }
+.cookie-float-btn svg { width: 20px; height: 20px; }
+.cookie-float-btn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 48px;
+  bottom: 50%;
+  transform: translateY(50%);
+  background: rgba(13,17,23,0.95);
+  border: 1px solid #1b2332;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+</style>
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-logo">
+    <span class="dot"></span>
+    <span>GEO Optimizer</span>
+  </a>
+  <button class="nav-hamburger" id="nav-ham" aria-label="__I18N_ARIA_MENU__">&#9776;</button>
+  <div class="nav-links">
+    <a href="/">__I18N_NAV_AUDIT__</a>
+    <a href="/compare">__I18N_NAV_COMPARE__</a>
+    <a href="https://auriti-labs.github.io/geo-optimizer-skill/">__I18N_NAV_DOCS__</a>
+    <span class="nav-sep"></span>
+    <div class="nav-dropdown">
+      <button class="nav-dropdown-toggle" aria-expanded="false">__I18N_NAV_MORE__ <svg viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="nav-dropdown-menu">
+        <a href="/research">__I18N_NAV_RESEARCH__</a>
+        <a href="/roadmap">__I18N_NAV_ROADMAP__</a>
+        <a href="/manifesto">__I18N_NAV_MANIFESTO__</a>
+        <a href="/privacy">__I18N_NAV_PRIVACY__</a>
+      </div>
+    </div>
+  </div>
+  <a class="nav-cta" href="https://github.com/skywalkerqqq/geo-optimizer-skill" target="_blank" rel="noopener">
+    <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" fill="currentColor"/></svg>
+    __I18N_NAV_GITHUB__
+  </a>
+</nav>
+
+<div class="wrapper">
+  <div class="page-header">
+    <h1>__I18N_HDR_H1__</h1>
+    <div>
+      <span class="gdpr-badge">__I18N_HDR_BADGE__</span>
+    </div>
+    <p class="text-muted" style="margin-top: 1rem; max-width: 540px; margin-inline: auto;">
+      __I18N_HDR_LAST_UPDATED__ <span class="text-bold">__I18N_HDR_DATE__</span><br>
+      __I18N_HDR_CONTROLLER_LBL__ <span class="text-bold">__I18N_HDR_CONTROLLER_NAME__</span>
+    </p>
+  </div>
+
+  <div class="legal-content">
+    <h2 id="intro">__I18N_S1_HEAD__</h2>
+    <p>
+      __I18N_S1_P1__
+    </p>
+    <p>
+      __I18N_S1_P2__
+    </p>
+    <p>
+      __I18N_S1_P3_LEAD__
+      <a href="mailto:skywalkerqqq@users.noreply.github.com">skywalkerqqq@users.noreply.github.com</a>
+    </p>
+
+    <h2 id="data-collection">__I18N_S2_HEAD__</h2>
+    <p>
+      __I18N_S2_P1__
+    </p>
+
+    <h3>__I18N_S21_HEAD__</h3>
+    <p>
+      __I18N_S21_P1__
+    </p>
+    <ul>
+      <li><strong>__I18N_L1A_LBL__</strong> __I18N_L1A_TXT__</li>
+      <li><strong>__I18N_L1B_LBL__</strong> __I18N_L1B_TXT__</li>
+      <li><strong>__I18N_L1C_LBL__</strong> __I18N_L1C_TXT__</li>
+      <li><strong>__I18N_L1D_LBL__</strong> __I18N_L1D_TXT__</li>
+    </ul>
+
+    <h3>__I18N_S22_HEAD__</h3>
+    <p>
+      __I18N_S22_P1__
+    </p>
+    <ul>
+      <li><strong>__I18N_L2A_LBL__</strong> __I18N_L2A_TXT__</li>
+      <li><strong>__I18N_L2B_LBL__</strong> __I18N_L2B_TXT__</li>
+      <li><strong>__I18N_L2C_LBL__</strong> __I18N_L2C_TXT__</li>
+    </ul>
+
+    <h2 id="cookies">__I18N_S3_HEAD__</h2>
+    <p>
+      __I18N_S3_P1__
+    </p>
+    <p>
+      <strong>__I18N_S3_P2A_LBL__</strong>
+      <span class="text-muted">
+        __I18N_S3_P2A_TXT__
+      </span>
+    </p>
+    <p>
+      <strong>__I18N_S3_P2B_LBL__</strong>
+      <span class="text-muted">
+        __I18N_S3_P2B_TXT__
+      </span>
+    </p>
+    <p>
+      <strong>__I18N_S3_P2C_LBL__</strong>
+      <span class="text-muted">
+        __I18N_S3_P2C_TXT__
+      </span>
+    </p>
+    <div class="info-box">
+      <strong>__I18N_S3_INFO_LBL__</strong>
+      <p class="text-muted">
+        __I18N_S3_INFO_TXT__
+      </p>
+    </div>
+
+    <h2 id="google-analytics">__I18N_S4_HEAD__</h2>
+    <p>
+      __I18N_S4_P1__
+    </p>
+    <p>
+      <strong>__I18N_S4_P2_LBL__</strong>
+      <span class="text-muted">
+        - __I18N_S4_P2_L1__<br>
+        - __I18N_S4_P2_L2__<br>
+        - __I18N_S4_P2_L3__<br>
+        - __I18N_S4_P2_L4__<br>
+        - __I18N_S4_P2_L5__
+      </span>
+    </p>
+    <p>
+      <strong>__I18N_S4_P3_LBL__</strong>
+      <span class="text-muted">
+        - __I18N_S4_P3_L1__<br>
+        - __I18N_S4_P3_L2__<br>
+        - __I18N_S4_P3_L3__<br>
+        - __I18N_S4_P3_L4__
+      </span>
+    </p>
+    <p>
+      <strong>__I18N_S4_P4_LBL__</strong>
+      <span class="text-muted">
+        __I18N_S4_P4_TXT__
+      </span>
+    </p>
+    <p>
+      <strong>__I18N_S4_P5_LBL__</strong>
+      <span class="text-muted">
+        __I18N_S4_P5_PRE__ <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">
+        __I18N_S4_P5_LINK__</a> __I18N_S4_P5_POST__
+      </span>
+    </p>
+
+    <h2 id="security">__I18N_S5_HEAD__</h2>
+    <p>
+      __I18N_S5_P1_LEAD__
+    </p>
+    <ul>
+      <li><strong>__I18N_S5_L1_LBL__</strong> __I18N_S5_L1_TXT__</li>
+      <li><strong>__I18N_S5_L2_LBL__</strong> __I18N_S5_L2_TXT__</li>
+      <li><strong>__I18N_S5_L3_LBL__</strong> __I18N_S5_L3_TXT__</li>
+      <li><strong>__I18N_S5_L4_LBL__</strong> __I18N_S5_L4_TXT__</li>
+    </ul>
+    <p>
+      __I18N_S5_P2_PRE__<strong>Render.com</strong>__I18N_S5_P2_AND__<strong>GitHub Pages</strong>__I18N_S5_P2_POST__
+    </p>
+
+    <h2 id="retention">__I18N_S6_HEAD__</h2>
+    <table class="legal-table">
+      <thead>
+        <tr>
+          <th>__I18N_T6_H1__</th>
+          <th>__I18N_T6_H2__</th>
+          <th>__I18N_T6_H3__</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="text-bold">__I18N_T6_R1_C1__</td>
+          <td>__I18N_T6_R1_C2__</td>
+          <td>__I18N_T6_R1_C3__</td>
+        </tr>
+        <tr>
+          <td class="text-bold">__I18N_T6_R2_C1__</td>
+          <td>__I18N_T6_R2_C2__</td>
+          <td>__I18N_T6_R2_C3__</td>
+        </tr>
+        <tr>
+          <td class="text-bold">__I18N_T6_R3_C1__</td>
+          <td>__I18N_T6_R3_C2__</td>
+          <td>__I18N_T6_R3_C3__</td>
+        </tr>
+        <tr>
+          <td class="text-bold">__I18N_T6_R4_C1__</td>
+          <td>__I18N_T6_R4_C2__</td>
+          <td>__I18N_T6_R4_C3__</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="third-party">__I18N_S7_HEAD__</h2>
+    <p>
+      __I18N_S7_P1__
+    </p>
+    <table class="legal-table">
+      <thead>
+        <tr>
+          <th>__I18N_T7_H1__</th>
+          <th>__I18N_T7_H2__</th>
+          <th>__I18N_T7_H3__</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="text-bold">__I18N_T7_R1_C1__</td>
+          <td>__I18N_T7_R1_C2__</td>
+          <td>__I18N_T7_R1_C3__</td>
+        </tr>
+        <tr>
+          <td class="text-bold">__I18N_T7_R2_C1__</td>
+          <td>__I18N_T7_R2_C2__</td>
+          <td>__I18N_T7_R2_C3__</td>
+        </tr>
+        <tr>
+          <td class="text-bold">__I18N_T7_R3_C1__</td>
+          <td>__I18N_T7_R3_C2__</td>
+          <td>__I18N_T7_R3_C3__</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      __I18N_S7_P2_PRE__<strong>__I18N_S7_P2_SUBPROC__</strong>
+      __I18N_S7_P2_POST__
+    </p>
+
+    <h2 id="rights">__I18N_S8_HEAD__</h2>
+    <p>
+      __I18N_S8_P1__
+    </p>
+    <ul>
+      <li><strong>__I18N_S8_L1_LBL__</strong> __I18N_S8_L1_TXT__</li>
+      <li><strong>__I18N_S8_L2_LBL__</strong> __I18N_S8_L2_TXT__</li>
+      <li><strong>__I18N_S8_L3_LBL__</strong> __I18N_S8_L3_TXT__</li>
+      <li><strong>__I18N_S8_L4_LBL__</strong> __I18N_S8_L4_TXT__</li>
+      <li><strong>__I18N_S8_L5_LBL__</strong> __I18N_S8_L5_TXT__</li>
+      <li><strong>__I18N_S8_L6_LBL__</strong> __I18N_S8_L6_TXT__</li>
+      <li><strong>__I18N_S8_L7_LBL__</strong> __I18N_S8_L7_TXT__</li>
+      <li><strong>__I18N_S8_L8_LBL__</strong> __I18N_S8_L8_TXT__</li>
+    </ul>
+    <p>
+      __I18N_S8_P2_PRE__<a href="mailto:skywalkerqqq@users.noreply.github.com">skywalkerqqq@users.noreply.github.com</a>
+    </p>
+    <p>
+      __I18N_S8_P3_PRE__<strong>__I18N_S8_P3_DAYS__</strong>__I18N_S8_P3_POST__
+    </p>
+
+    <h2 id="children">__I18N_S9_HEAD__</h2>
+    <p>
+      __I18N_S9_P1__
+    </p>
+
+    <h2 id="changes">__I18N_S10_HEAD__</h2>
+    <p>
+      __I18N_S10_P1__
+    </p>
+    <p>
+      __I18N_S10_P2__
+    </p>
+    <p>
+      __I18N_S10_P3__
+    </p>
+
+    <h2 id="contact">__I18N_S11_HEAD__</h2>
+    <p>
+      __I18N_S11_P1__
+    </p>
+    <div class="info-box">
+      <strong>__I18N_S11_BRAND__</strong><br>
+      <span class="text-muted">__I18N_S11_ROLE__</span><br><br>
+      __I18N_S11_EMAIL_LBL__ <a href="mailto:skywalkerqqq@users.noreply.github.com">skywalkerqqq@users.noreply.github.com</a><br>
+      __I18N_S11_GH_LBL__ <a href="https://github.com/skywalkerqqq" target="_blank" rel="noopener">github.com/Auriti-Labs</a>
+    </div>
+
+    <p style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align: center;">
+      <span class="text-muted">__I18N_FOOT_CREATED__</span><br>
+      <span class="text-muted">__I18N_FOOT_UPDATED__</span>
+    </p>
+  </div>
+
+  <footer>
+    <div class="links">
+      <a href="/">__I18N_F_HOME__</a>
+      <a href="/privacy">__I18N_F_PRIVACY__</a>
+      <a href="https://github.com/skywalkerqqq/geo-optimizer-skill">GitHub</a>
+      <a href="https://pypi.org/project/geo-optimizer-skill/">PyPI</a>
+    </div>
+    <div class="text-muted">
+      &copy; 2026 skywalkerqqq. All rights reserved.
+    </div>
+  </footer>
+</div>
+
+<!-- Floating cookie settings button: link to privacy#cookies (no modal on this page) -->
+<a href="/privacy#cookies" class="cookie-float-btn" title="__I18N_TITLE_COOKIE__" aria-label="__I18N_ARIA_COOKIE__">
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+    <circle cx="8" cy="9" r="1.5" fill="currentColor"/>
+    <circle cx="15" cy="8" r="1" fill="currentColor"/>
+    <circle cx="14" cy="14" r="1.5" fill="currentColor"/>
+    <circle cx="9" cy="15" r="1" fill="currentColor"/>
+    <circle cx="17" cy="13" r="1" fill="currentColor"/>
+  </svg>
+</a>
+
+<script__NONCE_ATTR__>
+document.getElementById('nav-ham').addEventListener('click', function() {
+  document.querySelector('.nav-links').classList.toggle('open');
+  this.textContent = this.textContent === '☰' ? '✕' : '☰';
+});
+document.querySelectorAll('.nav-dropdown-toggle').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var dd = this.closest('.nav-dropdown');
+    dd.classList.toggle('open');
+    this.setAttribute('aria-expanded', dd.classList.contains('open'));
+  });
+});
+document.addEventListener('click', function() {
+  document.querySelectorAll('.nav-dropdown.open').forEach(function(dd) {
+    dd.classList.remove('open');
+    dd.querySelector('.nav-dropdown-toggle').setAttribute('aria-expanded', 'false');
+  });
+});
+</script>
+</body>
+</html>

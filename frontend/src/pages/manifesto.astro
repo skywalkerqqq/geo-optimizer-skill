@@ -1,0 +1,82 @@
+---
+import Shell from '../components/Shell.astro';
+import ManifestoSection from '../components/manifesto/ManifestoSection.astro';
+import ManifestoToc from '../components/manifesto/ManifestoToc.astro';
+import { manifestoSections } from '../lib/manifestoContent';
+---
+
+<Shell title="The Generative Engine Optimization Manifesto" description="An AI visibility manifesto: why being citable by ChatGPT, Perplexity & Claude must be auditable, open, and measurable through generative engine optimization." canonical="https://geoready.dev/manifesto/">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-16">
+    {/* Header editoriale */}
+    <header class="max-w-7xl mb-14 md:mb-20">
+      <div class="flex items-center gap-2 text-[10px] font-mono text-text-muted uppercase tracking-wider">
+        <span>GEO Optimizer</span>
+        <span class="w-1 h-1 rounded-full bg-text-muted" />
+        <span>Manifesto</span>
+      </div>
+
+      <h1 class="mt-3 font-display text-3xl md:text-4xl font-bold text-text-primary leading-tight tracking-tight">
+        The Generative Engine Optimization Manifesto
+      </h1>
+
+      <p class="mt-4 text-base md:text-lg text-text-secondary leading-relaxed max-w-2xl">
+        Why AI search visibility should be
+        <span class="text-text-primary font-medium">auditable</span>,
+        <span class="text-text-primary font-medium">open</span>, and
+        <span class="text-text-primary font-medium">accessible</span> to every website on the internet.
+      </p>
+      <p class="mt-2 text-xs text-text-muted font-mono">Published May 2026 · Last updated May 2026</p>
+
+      <p class="mt-4 text-sm text-text-secondary">
+        The principles and signals described here are grounded in the <a href="/research/" class="text-accent-teal hover:underline">research foundation</a> that informs every scoring decision in GEO Optimizer.
+      </p>
+    </header>
+
+    {/* Layout a due colonne: contenuto + TOC sticky */}
+    <div class="flex flex-col lg:flex-row gap-8 lg:gap-12">
+      {/* TOC mobile + sidebar desktop */}
+      <ManifestoToc sections={manifestoSections} />
+
+      {/* Contenuto principale */}
+      <div class="flex-1 min-w-0 space-y-14 md:space-y-20">
+        {manifestoSections.map((section) => (
+          <ManifestoSection section={section} />
+        ))}
+
+        {/* Firma in calce */}
+        <p class="pt-8 border-t border-border text-sm text-text-secondary font-medium">
+          — skywalkerqqq, founder
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "The Generative Engine Optimization Manifesto",
+    "description": "An AI visibility manifesto: why being citable by ChatGPT, Perplexity & Claude must be auditable, open, and measurable through generative engine optimization.",
+    "author": {
+      "@type": "Organization",
+      "name": "skywalkerqqq",
+      "url": "https://github.com/skywalkerqqq"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "skywalkerqqq",
+      "url": "https://github.com/skywalkerqqq"
+    },
+    "datePublished": "2026-05-12",
+    "dateModified": "2026-05-26",
+    "image": "https://geoready.dev/assets/og-image.png",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "https://geoready.dev/manifesto/"
+    },
+    "about": [
+      "AI search visibility",
+      "Generative Engine Optimization",
+      "website auditability"
+    ]
+  })} />
+</Shell>

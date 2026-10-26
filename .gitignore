@@ -1,0 +1,87 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backups
+*.bak
+*.swp
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Claude Code
+CLAUDE.md
+
+# GEO Optimizer cache
+.geo-cache/
+
+# Other
+node_modules/
+docs_dev/
+.claude/
+
+# Documenti interni (marketing, strategia, decisioni)
+.agents/
+docs/product/
+docs/strategy/
+
+# Local caches
+local_cache/
+.codex
+.mypy_cache/
+
+# Generated graph analysis output (graphify tool)
+graphify-out/
+
+# Node
+node_modules/
+package-lock.json
+
+# Local AI agent config (upstream internal tooling)
+.claude/
+
+# Caches
+.mypy_cache/
+.ruff_cache/
+
+# Editors / WorkBuddy
+.workbuddy/
+.idea/
+*.swp
+
+# Local artifacts
+out_zh/
+site/dist/
+site/.astro/
+frontend/dist/
+frontend/.astro/

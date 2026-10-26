@@ -1,0 +1,385 @@
+---
+import { PortableText } from 'astro-portabletext';
+import Shell from '../../components/Shell.astro';
+import NewsletterSignup from '../../components/NewsletterSignup';
+import Callout from '../../components/Callout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+import Image from '../../components/Image.astro';
+import PortableTextLink from '../../components/PortableTextLink.astro';
+import ArticleVisual from '../../components/ArticleVisual.astro';
+import { guidePrimaryVisuals, guideSupplementalVisuals } from '../../lib/articleVisuals';
+import { getAllArticleSlugs, getArticleBySlug, urlForImage } from '../../utils/sanity';
+
+// ── Static paths ──────────────────────────────────────────────────────────────
+export async function getStaticPaths() {
+  const slugs = await getAllArticleSlugs();
+  return slugs
+    .filter((s: { slug: string; category: string }) => s.category === 'guides')
+    .map((s: { slug: string; category: string }) => ({ params: { slug: s.slug } }));
+}
+
+const { slug } = Astro.params;
+const article = await getArticleBySlug(slug as string);
+
+if (!article) return Astro.redirect('/404', 301);
+
+const canonical = `https://geoready.dev/guides/${slug}/`;
+const title = article.metaTitle || article.title;
+const schemaType = article.schemaOrgType || 'Article';
+const author = article.author || 'skywalkerqqq';
+const ogImageUrl = article.ogImage?.asset
+  ? urlForImage(article.ogImage).width(1200).height(630).fit('crop').auto('format').url()
+  : undefined;
+
+const primaryVisual = guidePrimaryVisuals[slug as keyof typeof guidePrimaryVisuals];
+const supplementalVisuals = guideSupplementalVisuals[slug as keyof typeof guideSupplementalVisuals] ?? [];
+
+type CommercialGuideLink = {
+  href: string;
+  label: string;
+  dataCta: string;
+};
+
+type CommercialGuideBlock = {
+  eyebrow: string;
+  heading: string;
+  copy: string;
+  primary: CommercialGuideLink;
+  secondary: CommercialGuideLink;
+  proofPoints: string[];
+};
+
+const commercialGuideBlocks = {
+  aiAudit: {
+    eyebrow: 'Apply this guide',
+    heading: 'Run an AI SEO audit before you change pages.',
+    copy:
+      'Use the audit to find which signal is holding the site back: crawler access, schema, llms.txt, content clarity, AI discovery, or entity strength.',
+    primary: {
+      href: '/ai-seo-audit/',
+      label: 'Run the free AI SEO audit',
+      dataCta: 'guide_next_ai_seo_audit',
+    },
+    secondary: {
+      href: '/chatgpt-visibility-checker/',
+      label: 'Check ChatGPT visibility',
+      dataCta: 'guide_next_chatgpt_visibility',
+    },
+    proofPoints: [
+      'Best for pages that need a technical and content baseline.',
+      'Next metric: AI readiness score plus the weakest signal category.',
+    ],
+  },
+  chatgpt: {
+    eyebrow: 'Apply this guide',
+    heading: 'Check whether ChatGPT can understand and cite your site.',
+    copy:
+      'Start with the ChatGPT visibility path when the goal is brand mentions, answer inclusion, and source eligibility in ChatGPT-style answers.',
+    primary: {
+      href: '/chatgpt-visibility-checker/',
+      label: 'Check ChatGPT visibility',
+      dataCta: 'guide_next_chatgpt_visibility',
+    },
+    secondary: {
+      href: '/ai-seo-audit/',
+      label: 'Audit AI SEO readiness',
+      dataCta: 'guide_next_ai_seo_audit',
+    },
+    proofPoints: [
+      'Best for prompts where ChatGPT should mention the brand or cite the domain.',
+      'Next metric: visibility by prompt cluster, not only organic sessions.',
+    ],
+  },
+  perplexity: {
+    eyebrow: 'Apply this guide',
+    heading: 'Check whether Perplexity-style answers cite your domain.',
+    copy:
+      'Use the citation checker path when the risk is that answer engines quote competitors, review sites, or third-party sources instead of your own pages.',
+    primary: {
+      href: '/perplexity-citation-checker/',
+      label: 'Check Perplexity citations',
+      dataCta: 'guide_next_perplexity_citations',
+    },
+    secondary: {
+      href: '/ai-seo-audit/',
+      label: 'Audit citation readiness',
+      dataCta: 'guide_next_ai_seo_audit',
+    },
+    proofPoints: [
+      'Best for source-backed answers where the cited URL matters.',
+      'Next metric: direct citations, competitor citations, and missing citations.',
+    ],
+  },
+  technical: {
+    eyebrow: 'Apply this guide',
+    heading: 'Find the technical blockers before adding more content.',
+    copy:
+      'Run the audit when the guide points to crawler access, structured data, llms.txt, or parsing issues that can stop AI systems from using the page.',
+    primary: {
+      href: '/ai-seo-audit/',
+      label: 'Run the technical AI SEO audit',
+      dataCta: 'guide_next_ai_seo_audit',
+    },
+    secondary: {
+      href: '/perplexity-citation-checker/',
+      label: 'Check cited source coverage',
+      dataCta: 'guide_next_perplexity_citations',
+    },
+    proofPoints: [
+      'Best for crawlability, schema, robots.txt, and llms.txt work.',
+      'Next metric: pass/fail technical signals before content rewriting.',
+    ],
+  },
+  saas: {
+    eyebrow: 'Apply this guide',
+    heading: 'Turn SaaS GEO research into a prioritized audit.',
+    copy:
+      'Use the audit to see which product, comparison, documentation, and entity signals need work before AI engines can recommend the company.',
+    primary: {
+      href: '/ai-seo-audit/',
+      label: 'Run the SaaS AI SEO audit',
+      dataCta: 'guide_next_ai_seo_audit',
+    },
+    secondary: {
+      href: '/perplexity-citation-checker/',
+      label: 'Check competitor citations',
+      dataCta: 'guide_next_perplexity_citations',
+    },
+    proofPoints: [
+      'Best for best-tool, comparison, alternative, and category prompts.',
+      'Next metric: mention share and citation share by buyer-intent prompt.',
+    ],
+  },
+} satisfies Record<string, CommercialGuideBlock>;
+
+type CommercialGuideBlockKey = keyof typeof commercialGuideBlocks;
+
+const guideCommercialIntent: Record<string, CommercialGuideBlockKey> = {
+  'ai-citations-check': 'perplexity',
+  'how-perplexity-chooses-sources': 'perplexity',
+  'schema-markup-for-ai-citations': 'perplexity',
+  'appear-in-chatgpt-perplexity': 'perplexity',
+  'check-if-chatgpt-sees-your-website': 'chatgpt',
+  'chatgpt-search-vs-google-search': 'chatgpt',
+  'how-long-to-get-cited-by-chatgpt': 'chatgpt',
+  'robots-txt-ai-bots': 'technical',
+  'does-robots-txt-block-chatgpt': 'technical',
+  'llms-txt-wordpress': 'technical',
+  'what-is-llms-txt': 'technical',
+  'do-you-need-llms-txt-2026': 'technical',
+  'what-is-an-ai-crawler-bot-list': 'technical',
+  'geo-for-saas-companies': 'saas',
+};
+
+const commercialLinkBlock = commercialGuideBlocks[guideCommercialIntent[slug as string] ?? 'aiAudit'];
+
+// ── Portable Text components ──────────────────────────────────────────────────
+// astro-portabletext requires .astro component files for custom renderers.
+// Block/list/marks use the library defaults (semantic HTML) styled via CSS below.
+const ptComponents = {
+  type: {
+    callout: Callout,
+    codeBlock: CodeBlock,
+    image: Image,
+  },
+  mark: {
+    link: PortableTextLink,
+  },
+};
+
+// ── JSON-LD ───────────────────────────────────────────────────────────────────
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': schemaType,
+      '@id': `${canonical}#article`,
+      url: canonical,
+      headline: article.title,
+      description: article.description,
+      ...(ogImageUrl
+        ? { image: { '@type': 'ImageObject', url: ogImageUrl, width: 1200, height: 630 } }
+        : {}),
+      datePublished: article.datePublished,
+      dateModified: article.dateModified,
+      author: { '@type': 'Person', name: author, url: 'https://geoready.dev/about/' },
+      publisher: {
+        '@type': 'Organization',
+        name: 'GeoReady',
+        url: 'https://geoready.dev',
+        logo: { '@type': 'ImageObject', url: 'https://geoready.dev/icon-512.png' },
+      },
+      mainEntityOfPage: canonical,
+      isPartOf: { '@id': 'https://geoready.dev/#website' },
+    },
+    ...(article.faqs?.length
+      ? [{
+          '@type': 'FAQPage',
+          mainEntity: article.faqs.map((faq: any) => ({
+            '@type': 'Question',
+            name: faq.question,
+            acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+          })),
+        }]
+      : []),
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'GeoReady', item: 'https://geoready.dev/' },
+        { '@type': 'ListItem', position: 2, name: 'Guides', item: 'https://geoready.dev/guides/' },
+        { '@type': 'ListItem', position: 3, name: article.title, item: canonical },
+      ],
+    },
+  ],
+};
+---
+
+<Shell
+  title={title}
+  description={article.description}
+  canonical={canonical}
+  robots={article.noindex ? 'noindex, follow' : 'index, follow'}
+  ogImage={ogImageUrl}
+  twitterImage={ogImageUrl}
+>
+  <article class="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-16" itemscope itemtype="https://schema.org/Article">
+    {/* ── Header ──────────────────────────────────────────────────────────── */}
+    <header class="mb-12 md:mb-16 max-w-3xl">
+      <div class="flex items-center gap-2 text-[10px] font-mono text-text-muted uppercase tracking-wider">
+        <a href="/guides/" class="hover:text-accent-teal">Guides</a>
+        <span class="w-1 h-1 rounded-full bg-text-muted" />
+        {article.focusKeyword && <span>{article.focusKeyword}</span>}
+      </div>
+
+      <h1 itemprop="headline" class="mt-3 font-display text-3xl md:text-4xl font-bold text-text-primary leading-tight tracking-tight">
+        {article.title}
+      </h1>
+
+      <p class="mt-4 text-base md:text-lg text-text-secondary leading-relaxed">
+        {article.description}
+      </p>
+
+      <div class="mt-5 flex items-center gap-3 text-xs font-mono text-text-muted">
+        <span itemprop="author">{author}</span>
+        <span>·</span>
+        <time itemprop="datePublished" datetime={article.datePublished}>
+          {new Date(article.datePublished).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </time>
+        {article.dateModified !== article.datePublished && (
+          <>
+            <span>· Updated</span>
+            <time itemprop="dateModified" datetime={article.dateModified}>
+              {new Date(article.dateModified).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </time>
+          </>
+        )}
+      </div>
+    </header>
+
+    {primaryVisual && (
+      <ArticleVisual
+        src={primaryVisual.src}
+        alt={primaryVisual.alt}
+        caption={primaryVisual.caption}
+        height={primaryVisual.height}
+      />
+    )}
+
+    {/* ── Body ─────────────────────────────────────────────────────────────── */}
+    <div class="pt-prose">
+      <PortableText value={article.body} components={ptComponents} />
+    </div>
+
+    <section class="mt-12 max-w-3xl rounded-[--radius-lg] border border-accent-teal/25 bg-accent-teal/5 p-5 md:p-6" aria-labelledby="guide-next-step-heading">
+      <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-accent-teal">{commercialLinkBlock.eyebrow}</p>
+      <h2 id="guide-next-step-heading" class="mt-2 font-display text-2xl font-bold leading-tight tracking-tight text-text-primary">
+        {commercialLinkBlock.heading}
+      </h2>
+      <p class="mt-3 text-sm md:text-base leading-relaxed text-text-secondary">
+        {commercialLinkBlock.copy}
+      </p>
+      <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+        <a
+          href={commercialLinkBlock.primary.href}
+          data-cta={`${commercialLinkBlock.primary.dataCta}_${slug}`}
+          class="inline-flex items-center justify-center rounded-[--radius-lg] bg-accent-teal px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-teal-dark"
+        >
+          {commercialLinkBlock.primary.label}
+        </a>
+        <a
+          href={commercialLinkBlock.secondary.href}
+          data-cta={`${commercialLinkBlock.secondary.dataCta}_${slug}`}
+          class="inline-flex items-center justify-center rounded-[--radius-lg] border border-border bg-bg-base px-4 py-3 text-sm font-semibold text-text-primary transition-colors hover:border-accent-teal/40 hover:text-accent-teal"
+        >
+          {commercialLinkBlock.secondary.label}
+        </a>
+      </div>
+      <ul class="mt-5 grid gap-2 text-sm leading-relaxed text-text-secondary md:grid-cols-2">
+        {commercialLinkBlock.proofPoints.map((point) => (
+          <li class="border-l border-accent-teal/30 pl-3">{point}</li>
+        ))}
+      </ul>
+    </section>
+
+    {supplementalVisuals.length > 0 && (
+      <div class="mt-10 space-y-8">
+        {supplementalVisuals.map((visual) => (
+          <ArticleVisual
+            src={visual.src}
+            alt={visual.alt}
+            caption={visual.caption}
+            height={visual.height}
+          />
+        ))}
+      </div>
+    )}
+
+    {/* ── FAQs ─────────────────────────────────────────────────────────────── */}
+    {article.faqs && article.faqs.length > 0 && (
+      <section class="mt-16">
+        <h2 class="font-display text-2xl font-bold text-text-primary leading-tight tracking-tight mb-6">
+          Frequently asked questions
+        </h2>
+        <div class="space-y-7">
+          {article.faqs.map((faq: any) => (
+            <div>
+              <h3 class="font-display text-lg font-semibold text-text-primary">{faq.question}</h3>
+              <p class="mt-2 text-text-secondary leading-relaxed">{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {/* ── Newsletter ───────────────────────────────────────────────────────── */}
+    <div class="mt-16">
+      <NewsletterSignup
+        client:visible
+        source={`newsletter-guide-${slug}`}
+        title="Get the monthly State of GEO report"
+        detail="AI search readiness benchmarks, adoption stats, and the actions that move the needle — delivered monthly. No spam."
+      />
+    </div>
+  </article>
+
+  {/* ── Structured data ──────────────────────────────────────────────────────── */}
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+</Shell>
+
+<style is:global>
+  .pt-prose h2 { font-family: var(--font-display, inherit); font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary, inherit); line-height: 1.25; letter-spacing: -0.025em; margin-top: 3rem; margin-bottom: 1rem; }
+  .pt-prose h3 { font-family: var(--font-display, inherit); font-size: 1.125rem; font-weight: 600; color: var(--color-text-primary, inherit); margin-top: 2rem; margin-bottom: 0.75rem; }
+  .pt-prose h4 { font-weight: 600; color: var(--color-text-primary, inherit); margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  .pt-prose p { color: var(--color-text-secondary, inherit); line-height: 1.75; margin-top: 1rem; }
+  .pt-prose ul { list-style-type: disc; padding-left: 1.25rem; margin-top: 1rem; }
+  .pt-prose ol { list-style-type: decimal; padding-left: 1.25rem; margin-top: 1rem; }
+  .pt-prose li { color: var(--color-text-secondary, inherit); line-height: 1.75; margin-top: 0.375rem; }
+  .pt-prose strong { font-weight: 600; color: var(--color-text-primary, inherit); }
+  .pt-prose em { font-style: italic; }
+  .pt-prose code { font-size: 0.875rem; font-family: ui-monospace, monospace; background: var(--color-bg-surface, #1a1a1a); border: 1px solid var(--color-border, #333); border-radius: 0.25rem; padding: 0.125rem 0.25rem; }
+  .pt-prose pre { background: var(--color-bg-surface, #1a1a1a); border: 1px solid var(--color-border, #333); border-radius: 0.75rem; padding: 1rem; margin: 1.5rem 0; overflow-x: auto; font-size: 0.875rem; font-family: ui-monospace, monospace; }
+  .pt-prose pre code { background: none; border: none; padding: 0; }
+  .pt-prose a { color: var(--color-accent-teal, #2dd4bf); }
+  .pt-prose a:hover { text-decoration: underline; }
+  .pt-prose blockquote { border-left: 4px solid var(--color-accent-teal, #2dd4bf); padding-left: 1rem; font-style: italic; color: var(--color-text-secondary, inherit); margin: 1.5rem 0; }
+</style>

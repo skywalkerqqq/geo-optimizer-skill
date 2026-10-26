@@ -1,0 +1,595 @@
+"""Programmatic rewrite of templates/manifesto.html.
+
+Builds the template from a base scaffold + a per-section body where every
+translatable string is referenced by ``__I18N_<KEY>__`` placeholder. Result
+is committed to disk atomically; the original (potentially damaged) file is
+overwritten.
+
+Why this approach
+-----------------
+The previous migration script replaced whole English paragraphs in-place with
+``str.replace``. Some paragraphs are long enough that an earlier key's
+substring collided with a later key's data, leaving the template half-
+translated (English residue inside a paragraph that already lost its prefix).
+
+This script avoids that entirely by emitting the HTML with placeholders only —
+no English paragraphs are ever present in the source file.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+TPL = Path(__file__).parent / "templates" / "manifesto.html"
+
+# Static head/CSS/etc unchanged across locales. We keep it as a verbatim
+# string. Only the user-visible English copy gets placeholdered.
+HEAD_AND_STYLE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__I18N_TITLE__</title>
+<meta name="description" content="__I18N_META_DESC__">
+<link rel="canonical" href="https://skywalkerqqq.github.io/geo-optimizer-skill/manifesto">
+<meta property="og:title" content="__I18N_OG_TITLE__">
+<meta property="og:description" content="__I18N_OG_DESC__">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://skywalkerqqq.github.io/geo-optimizer-skill/manifesto">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06080f;--bg-card:#0d1117;--bg-card-hover:#111820;
+  --border:#1b2332;--border-hover:#2d3a4f;
+  --text:#e2e8f0;--text-dim:#64748b;--text-muted:#475569;
+  --accent:#3b82f6;--accent2:#8b5cf6;
+  --green:#22c55e;--cyan:#06b6d4;--yellow:#eab308;--red:#ef4444;
+  --radius:12px;--radius-sm:8px;
+  --font:'DM Sans',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+a{color:var(--accent);text-decoration:none;transition:color .2s}
+a:hover{color:var(--accent2)}
+code{font-family:var(--mono);font-size:.85em;background:#1e293b;padding:.15em .4em;border-radius:4px}
+
+/* Grain overlay */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  opacity:.03;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* Glow orbs */
+.glow-orb{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+.glow-orb.blue{width:500px;height:500px;background:rgba(59,130,246,.07);top:-150px;left:-150px}
+.glow-orb.purple{width:400px;height:400px;background:rgba(139,92,246,.06);bottom:-50px;right:-100px}
+
+/* ─── Layout ─── */
+.wrapper{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:2rem 1.5rem}
+
+/* ─── Professional Nav ─── */
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;margin-bottom:2.5rem;background:rgba(6,8,15,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);border-radius:0 0 var(--radius-sm) var(--radius-sm)}
+.nav-logo{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:.95rem;color:var(--text);white-space:nowrap;text-decoration:none}
+.nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 6px var(--green)}
+.nav-logo .ver{font-family:var(--mono);font-size:.65rem;color:var(--accent);background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);padding:.1rem .4rem;border-radius:20px;margin-left:.25rem}
+.nav-links{display:flex;align-items:center;gap:1.75rem}
+.nav-links a{color:var(--text-dim);font-size:.82rem;font-weight:500;letter-spacing:.02em;transition:color .2s;white-space:nowrap;text-decoration:none}
+.nav-links a:hover,.nav-links a.active{color:var(--text)}
+.nav-sep{width:1px;height:16px;background:var(--border);flex-shrink:0}
+.nav-dropdown{position:relative}
+.nav-dropdown-toggle{display:flex;align-items:center;gap:.3rem;color:var(--text-dim);font-size:.82rem;font-weight:500;letter-spacing:.02em;cursor:pointer;transition:color .2s;white-space:nowrap;background:none;border:none;font-family:inherit;padding:0}
+.nav-dropdown-toggle:hover,.nav-dropdown.open .nav-dropdown-toggle{color:var(--text)}
+.nav-dropdown-toggle svg{width:10px;height:10px;fill:currentColor;transition:transform .2s}
+.nav-dropdown.open .nav-dropdown-toggle svg{transform:rotate(180deg)}
+.nav-dropdown-menu{display:none;position:absolute;top:calc(100% + .75rem);right:0;min-width:160px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.35rem;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.nav-dropdown.open .nav-dropdown-menu{display:block}
+.nav-dropdown-menu a{display:block;padding:.5rem .75rem;color:var(--text-dim);font-size:.82rem;font-weight:500;border-radius:6px;transition:all .15s;text-decoration:none}
+.nav-dropdown-menu a:hover{color:var(--text);background:var(--bg-card-hover)}
+.nav-dropdown-menu a.active{color:var(--text)}
+.nav-cta{display:flex;align-items:center;gap:.4rem;color:var(--text-dim);font-size:.82rem;font-weight:500;border:1px solid var(--border);padding:.35rem .75rem;border-radius:20px;transition:all .2s;white-space:nowrap;text-decoration:none}
+.nav-cta:hover{color:var(--text);border-color:var(--border-hover)}
+.nav-cta svg{width:14px;height:14px;fill:currentColor;flex-shrink:0}
+.nav-cta .star-count{font-family:var(--mono);font-size:.75rem}
+.nav-hamburger{display:none;background:none;border:1px solid var(--border);color:var(--text-dim);padding:.3rem .5rem;border-radius:6px;cursor:pointer;font-size:1.1rem;line-height:1;transition:all .2s}
+.nav-hamburger:hover{border-color:var(--border-hover);color:var(--text)}
+@media(max-width:768px){
+  nav{flex-wrap:wrap;gap:.5rem;padding:.6rem .75rem}
+  .nav-links{display:none;width:100%;flex-direction:column;gap:0;border-top:1px solid var(--border);padding-top:.5rem;margin-top:.25rem}
+  .nav-links.open{display:flex}
+  .nav-links a{padding:.55rem .25rem;border-bottom:1px solid var(--border);font-size:.9rem}
+  .nav-links a:last-child{border-bottom:none}
+  .nav-sep{display:none}
+  .nav-dropdown{width:100%}
+  .nav-dropdown-toggle{padding:.55rem .25rem;border-bottom:1px solid var(--border);font-size:.9rem;width:100%}
+  .nav-dropdown-menu{position:static;border:none;box-shadow:none;background:transparent;padding:0 0 0 1rem;display:none}
+  .nav-dropdown.open .nav-dropdown-menu{display:block}
+  .nav-dropdown-menu a{padding:.45rem .25rem;border-bottom:1px solid var(--border);border-radius:0}
+  .nav-hamburger{display:block}
+  .nav-logo .ver{display:none}
+  .nav-cta .star-count{display:none}
+}
+@media(max-width:480px){
+  .nav-cta span:not(.star-count){font-size:.8rem}
+}
+
+/* ─── Hero ─── */
+.hero{text-align:center;margin-bottom:4rem;padding:2rem 0}
+.hero-eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;opacity:.8}
+.hero h1{font-size:3.2rem;font-weight:700;letter-spacing:-.04em;line-height:1.1;
+  background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 50%,#60a5fa 100%);
+  background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  animation:shimmer 5s ease infinite;margin-bottom:1.25rem}
+@keyframes shimmer{0%,100%{background-position:0% center}50%{background-position:200% center}}
+.hero-sub{color:var(--text-dim);font-size:1.15rem;line-height:1.65;max-width:560px;margin:0 auto}
+
+/* ─── Table of contents ─── */
+.toc{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:3rem}
+.toc-title{font-size:.75rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.75rem}
+.toc ol{padding-left:1.25rem;color:var(--text-dim);font-size:.85rem;line-height:2}
+.toc a{color:var(--text-dim);transition:color .2s}
+.toc a:hover{color:var(--accent)}
+
+/* ─── Sections ─── */
+section{margin-bottom:4rem}
+section h2{font-size:1.6rem;font-weight:700;letter-spacing:-.025em;margin-bottom:1.5rem;
+  padding-bottom:.75rem;border-bottom:1px solid var(--border);color:var(--text)}
+.section-num{font-family:var(--mono);font-size:.75rem;color:var(--accent);display:block;margin-bottom:.25rem;letter-spacing:.08em}
+section p{color:var(--text-dim);line-height:1.75;margin-bottom:1.1rem;font-size:.97rem}
+section p:last-child{margin-bottom:0}
+
+/* ─── Blockquote ─── */
+blockquote{border-left:3px solid var(--accent);padding:.75rem 1.25rem;margin:1.5rem 0;background:rgba(59,130,246,.04);border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+blockquote p{color:var(--text);font-size:1rem;font-style:italic;margin-bottom:0}
+
+/* ─── Principle Cards ─── */
+.principles-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem;margin-top:1.5rem}
+.principle-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;transition:border-color .2s}
+.principle-card:hover{border-color:var(--border-hover)}
+.principle-card h3{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.6rem;display:flex;align-items:center;gap:.5rem}
+.principle-card h3::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.principle-card p{color:var(--text-dim);font-size:.87rem;line-height:1.65;margin-bottom:0}
+
+/* ─── Signals Table ─── */
+.signals-grid{display:flex;flex-direction:column;gap:1rem;margin-top:1.5rem}
+.signal-row{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;display:grid;grid-template-columns:180px 1fr;gap:1rem;align-items:start;transition:border-color .2s}
+.signal-row:hover{border-color:var(--border-hover)}
+.signal-meta{display:flex;flex-direction:column;gap:.35rem}
+.signal-name{font-weight:700;font-size:.95rem;color:var(--text)}
+.signal-pts{font-family:var(--mono);font-size:.75rem;padding:.2rem .5rem;border-radius:20px;display:inline-block;width:fit-content}
+.signal-pts.high{color:var(--green);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2)}
+.signal-pts.med{color:var(--yellow);background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.2)}
+.signal-pts.low{color:var(--cyan);background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2)}
+.signal-desc{color:var(--text-dim);font-size:.87rem;line-height:1.65}
+
+/* ─── Audience List ─── */
+.audience-list{list-style:none;display:flex;flex-direction:column;gap:.85rem;margin-top:1rem}
+.audience-list li{display:flex;align-items:flex-start;gap:.75rem;color:var(--text-dim);font-size:.95rem;line-height:1.65}
+.audience-list li::before{content:'→';color:var(--accent);font-family:var(--mono);flex-shrink:0;margin-top:.05em}
+
+/* ─── Commitments ─── */
+.commitments{display:flex;flex-direction:column;gap:1rem;margin-top:1rem}
+.commitment{background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:0 var(--radius) var(--radius) 0;padding:1.1rem 1.25rem}
+.commitment strong{color:var(--text);font-size:.95rem;display:block;margin-bottom:.35rem}
+.commitment p{color:var(--text-dim);font-size:.87rem;line-height:1.65;margin-bottom:0}
+
+/* ─── Bottom Line ─── */
+.bottom-line{background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(139,92,246,.06));border:1px solid var(--border);border-radius:var(--radius);padding:2.5rem 2rem;text-align:center;margin-bottom:3rem}
+.bottom-line p{color:var(--text-dim);line-height:1.75;margin-bottom:1rem;font-size:.97rem;max-width:600px;margin-inline:auto}
+.bottom-line p:last-of-type{margin-bottom:0}
+.bottom-line .conclusion{font-size:1.05rem;color:var(--text);font-style:italic;margin-top:1.5rem}
+
+/* ─── Footer ─── */
+footer{text-align:center;padding:2rem 0 1rem;border-top:1px solid var(--border);
+  margin-top:2rem;color:var(--text-muted);font-size:.8rem}
+footer .links{display:flex;justify-content:center;gap:1.25rem;margin-bottom:.75rem;flex-wrap:wrap}
+footer .links a{color:var(--text-muted);font-size:.8rem}
+footer .credit{font-size:.72rem;color:var(--text-muted)}
+
+/* ─── Responsive ─── */
+@media(max-width:600px){
+  .wrapper{padding:1.25rem 1rem}
+  .hero h1{font-size:2.2rem}
+  .hero-sub{font-size:1rem}
+  .principles-grid{grid-template-columns:1fr}
+  .signal-row{grid-template-columns:1fr;gap:.5rem}
+  section h2{font-size:1.3rem}
+  .bottom-line{padding:1.5rem 1rem}
+}
+
+/* ─── Floating cookie settings button ─── */
+.cookie-float-btn {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  z-index: 9990;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(13, 17, 23, 0.9);
+  border: 1px solid #1b2332;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  color: #64748b;
+  transition: color 0.2s, border-color 0.2s;
+}
+.cookie-float-btn:hover { color: #e2e8f0; border-color: #3b82f6; }
+.cookie-float-btn svg { width: 20px; height: 20px; }
+</style>
+
+<!-- Schema JSON-LD: __I18N_SIG_SCHEMA_NAME__ (root entity) -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","name":"__I18N_OG_SITE_NAME__","url":"https://skywalkerqqq.github.io/geo-optimizer-skill","description":"__I18N_JSONLD_WEBSITE_DESC__","author":{"@type":"Organization","name":"skywalkerqqq","url":"https://github.com/skywalkerqqq","sameAs":["https://github.com/skywalkerqqq","https://pypi.org/project/geo-optimizer-skill/","https://www.linkedin.com/in/juanauriti/","https://www.linkedin.com/company/auriti-labs","https://www.crunchbase.com/organization/auriti-labs"],"contactPoint":{"@type":"ContactPoint","contactType":"technical support","email":"skywalkerqqq@users.noreply.github.com","url":"https://github.com/skywalkerqqq/geo-optimizer-skill/issues"},"address":{"@type":"PostalAddress","addressCountry":"IT"}},"potentialAction":{"@type":"SearchAction","target":"https://skywalkerqqq.github.io/geo-optimizer-skill/?url={url}","query-input":"required name=url"}}
+</script>
+<!-- Schema JSON-LD: WebPage -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","name":"__I18N_JSONLD_WEBPAGE_NAME__","url":"https://skywalkerqqq.github.io/geo-optimizer-skill/manifesto","description":"__I18N_JSONLD_WEBPAGE_DESC__","isPartOf":{"@type":"WebSite","name":"__I18N_OG_SITE_NAME__","url":"https://skywalkerqqq.github.io/geo-optimizer-skill"},"author":{"@type":"Organization","name":"skywalkerqqq","url":"https://github.com/skywalkerqqq"},"datePublished":"2026-03-28","dateModified":"2026-03-30","inLanguage":"en"}
+</script>
+<!-- SEO: Open Graph / Social Media -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="__I18N_TITLE__">
+<meta property="og:description" content="__I18N_OG_DESC__">
+<meta property="og:url" content="https://skywalkerqqq.github.io/geo-optimizer-skill/manifesto">
+<meta property="og:image" content="https://skywalkerqqq.github.io/geo-optimizer-skill/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="__I18N_OG_SITE_NAME__">
+<meta property="og:locale" content="__I18N_OG_LOCALE__">
+
+<!-- Schema JSON-LD: __I18N_SIG_SCHEMA_NAME__: FAQPage -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"__I18N_FAQ1_NAME__","acceptedAnswer":{"@type":"Answer","text":"__I18N_FAQ1_TEXT__"}},{"@type":"Question","name":"__I18N_FAQ2_NAME__","acceptedAnswer":{"@type":"Answer","text":"__I18N_FAQ2_TEXT__"}},{"@type":"Question","name":"__I18N_FAQ3_NAME__","acceptedAnswer":{"@type":"Answer","text":"__I18N_FAQ3_TEXT__"}},{"@type":"Question","name":"__I18N_FAQ4_NAME__","acceptedAnswer":{"@type":"Answer","text":"__I18N_FAQ4_TEXT__"}}]}
+</script>
+<!-- GEO: RSS feed discovery -->
+<link rel="alternate" type="application/rss+xml" title="__I18N_OG_SITE_NAME__ Releases" href="https://github.com/skywalkerqqq/geo-optimizer-skill/releases.atom">
+</head>
+"""
+
+BODY = """<body>
+<div class="glow-orb blue"></div>
+<div class="glow-orb purple"></div>
+
+<div class="wrapper">
+  <nav>
+    <div class="nav-logo">
+      <span class="dot"></span>
+      <span>__I18N_OG_SITE_NAME__</span>
+      <span class="ver" id="nav-ver">v4.0.0</span>
+    </div>
+    <button class="nav-hamburger" id="nav-ham" aria-label="Menu">&#9776;</button>
+    <div class="nav-links">
+      <a href="/">__I18N_NAV_AUDIT__</a>
+      <a href="/compare">__I18N_NAV_COMPARE__</a>
+      <a href="https://auriti-labs.github.io/geo-optimizer-skill/">__I18N_NAV_DOCS__</a>
+      <span class="nav-sep"></span>
+      <div class="nav-dropdown">
+        <button class="nav-dropdown-toggle" aria-expanded="false">__I18N_NAV_MORE__ <svg viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="nav-dropdown-menu">
+          <a href="/research">__I18N_NAV_RESEARCH__</a>
+          <a href="/roadmap">__I18N_NAV_ROADMAP__</a>
+          <a href="/manifesto" class="active">__I18N_NAV_MANIFESTO__</a>
+        </div>
+      </div>
+    </div>
+    <a class="nav-cta" href="https://github.com/skywalkerqqq/geo-optimizer-skill" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" fill="currentColor"/></svg>
+      __I18N_NAV_GITHUB_CTA__
+      <span class="star-count" id="nav-stars"></span>
+    </a>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">__I18N_HERO_EYEBROW__</div>
+    <h1>__I18N_HERO_H1__</h1>
+    <p class="hero-sub">__I18N_HERO_SUB__</p>
+  </div>
+
+  <!-- Table of Contents -->
+  <div class="toc">
+    <div class="toc-title">__I18N_TOC_TITLE__</div>
+    <ol>
+      <li><a href="#s1">__I18N_TOC_S1__</a></li>
+      <li><a href="#s2">__I18N_TOC_S2__</a></li>
+      <li><a href="#s3">__I18N_TOC_S3__</a></li>
+      <li><a href="#s4">__I18N_TOC_S4__</a></li>
+      <li><a href="#s4b">__I18N_TOC_S4B__</a></li>
+      <li><a href="#s5">__I18N_TOC_S5__</a></li>
+      <li><a href="#s6">__I18N_TOC_S6__</a></li>
+      <li><a href="#s7">__I18N_TOC_S7__</a></li>
+    </ol>
+  </div>
+
+  <!-- Section 1 -->
+  <section id="s1">
+    <span class="section-num">__I18N_SECT_NUM_01__</span>
+    <h2>__I18N_S1_HEADING__</h2>
+    <p>__I18N_S1_PARA_1__</p>
+    <blockquote><p>__I18N_S1_BLOCKQUOTE__</p></blockquote>
+    <p>__I18N_S1_PARA_2__</p>
+    <p>__I18N_S1_PARA_3__</p>
+    <p>__I18N_S1_PARA_4__</p>
+    <p>__I18N_S1_PARA_5__</p>
+  </section>
+
+  <!-- Section 2 -->
+  <section id="s2">
+    <span class="section-num">__I18N_SECT_NUM_02__</span>
+    <h2>__I18N_S2_HEADING__</h2>
+    <p>__I18N_S2_PARA_1__</p>
+    <p>__I18N_S2_PARA_2__</p>
+    <p>__I18N_S2_PARA_3__</p>
+    <p>__I18N_S2_PARA_4__</p>
+    <p>__I18N_S2_PARA_5__</p>
+    <blockquote><p>__I18N_S2_BLOCKQUOTE__</p></blockquote>
+  </section>
+
+  <!-- Section 3: Principles -->
+  <section id="s3">
+    <span class="section-num">__I18N_SECT_NUM_03__</span>
+    <h2>__I18N_S3_HEADING__</h2>
+    <div class="principles-grid">
+      <div class="principle-card">
+        <h3>__I18N_PRINCIPLE_AUDITABILITY_TITLE__</h3>
+        <p>__I18N_PRINCIPLE_AUDITABILITY_BODY__</p>
+      </div>
+      <div class="principle-card">
+        <h3>__I18N_PRINCIPLE_SCIENTIFIC_TITLE__</h3>
+        <p>__I18N_PRINCIPLE_SCIENTIFIC_BODY__</p>
+      </div>
+      <div class="principle-card">
+        <h3>__I18N_PRINCIPLE_UNIVERSALITY_TITLE__</h3>
+        <p>__I18N_PRINCIPLE_UNIVERSALITY_BODY__</p>
+      </div>
+      <div class="principle-card">
+        <h3>__I18N_PRINCIPLE_OPEN_TITLE__</h3>
+        <p>__I18N_PRINCIPLE_OPEN_BODY__</p>
+      </div>
+      <div class="principle-card">
+        <h3>__I18N_PRINCIPLE_PRECISION_TITLE__</h3>
+        <p>__I18N_PRINCIPLE_PRECISION_BODY__</p>
+      </div>
+      <div class="principle-card">
+        <h3>__I18N_PRINCIPLE_DEVELOPER_TITLE__</h3>
+        <p>__I18N_PRINCIPLE_DEVELOPER_BODY__</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4: Eight signals -->
+  <section id="s4">
+    <span class="section-num">__I18N_SECT_NUM_04__</span>
+    <h2>__I18N_S4_HEADING__</h2>
+    <div class="signals-grid">
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_SIG_ROBOTS_NAME__</span>
+          <span class="signal-pts high">__I18N_SIG_ROBOTS_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_SIG_ROBOTS_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_SIG_LLMS_NAME__</span>
+          <span class="signal-pts high">__I18N_SIG_LLMS_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_SIG_LLMS_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_SIG_SCHEMA_NAME__</span>
+          <span class="signal-pts high">__I18N_SIG_SCHEMA_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_SIG_SCHEMA_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_SIG_META_NAME__</span>
+          <span class="signal-pts med">__I18N_SIG_META_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_SIG_META_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_SIG_CONTENT_NAME__</span>
+          <span class="signal-pts med">__I18N_SIG_CONTENT_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_SIG_CONTENT_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_SIG_TECH_NAME__</span>
+          <span class="signal-pts low">__I18N_SIG_TECH_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_SIG_TECH_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_SIG_DISCOVERY_NAME__</span>
+          <span class="signal-pts low">__I18N_SIG_DISCOVERY_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_SIG_DISCOVERY_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_SIG_BRAND_NAME__</span>
+          <span class="signal-pts med">__I18N_SIG_BRAND_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_SIG_BRAND_DESC__</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4b: Beyond the Score -->
+  <section id="s4b">
+    <span class="section-num">__I18N_SECT_NUM_04B__</span>
+    <h2>__I18N_S4B_HEADING__</h2>
+    <p>__I18N_S4B_INTRO__</p>
+    <div class="signals-grid">
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_BEYOND_PROMPT_NAME__</span>
+          <span class="signal-pts high">__I18N_BEYOND_PROMPT_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_BEYOND_PROMPT_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_BEYOND_TRUST_NAME__</span>
+          <span class="signal-pts med">__I18N_BEYOND_TRUST_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_BEYOND_TRUST_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_BEYOND_NEG_NAME__</span>
+          <span class="signal-pts high">__I18N_BEYOND_NEG_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_BEYOND_NEG_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_BEYOND_CDN_NAME__</span>
+          <span class="signal-pts low">__I18N_BEYOND_CDN_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_BEYOND_CDN_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_BEYOND_JS_NAME__</span>
+          <span class="signal-pts low">__I18N_BEYOND_JS_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_BEYOND_JS_DESC__</p>
+      </div>
+      <div class="signal-row">
+        <div class="signal-meta">
+          <span class="signal-name">__I18N_BEYOND_WEBMCP_NAME__</span>
+          <span class="signal-pts low">__I18N_BEYOND_WEBMCP_PTS__</span>
+        </div>
+        <p class="signal-desc">__I18N_BEYOND_WEBMCP_DESC__</p>
+      </div>
+    </div>
+    <p>__I18N_S4B_OUTRO__</p>
+  </section>
+
+  <!-- Section 5: Audience -->
+  <section id="s5">
+    <span class="section-num">__I18N_SECT_NUM_05__</span>
+    <h2>__I18N_S5_HEADING__</h2>
+    <ul class="audience-list">
+      <li>__I18N_AUDIENCE_ITEM_1__</li>
+      <li>__I18N_AUDIENCE_ITEM_2__</li>
+      <li>__I18N_AUDIENCE_ITEM_3__</li>
+      <li>__I18N_AUDIENCE_ITEM_4__</li>
+      <li>__I18N_AUDIENCE_ITEM_5__</li>
+      <li>__I18N_AUDIENCE_ITEM_6__</li>
+    </ul>
+  </section>
+
+  <!-- Section 6: Commitments -->
+  <section id="s6">
+    <span class="section-num">__I18N_SECT_NUM_06__</span>
+    <h2>__I18N_S6_HEADING__</h2>
+    <div class="commitments">
+      <div class="commitment">
+        <strong>__I18N_COMMIT_1_TITLE__</strong>
+        <p>__I18N_COMMIT_1_BODY__</p>
+      </div>
+      <div class="commitment">
+        <strong>__I18N_COMMIT_2_TITLE__</strong>
+        <p>__I18N_COMMIT_2_BODY__</p>
+      </div>
+      <div class="commitment">
+        <strong>__I18N_COMMIT_3_TITLE__</strong>
+        <p>__I18N_COMMIT_3_BODY__</p>
+      </div>
+      <div class="commitment">
+        <strong>__I18N_COMMIT_4_TITLE__</strong>
+        <p>__I18N_COMMIT_4_BODY__</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 7: Bottom Line -->
+  <section id="s7">
+    <span class="section-num">__I18N_SECT_NUM_07__</span>
+    <h2>__I18N_S7_HEADING__</h2>
+    <div class="bottom-line">
+      <p>__I18N_BOTTOMLINE_PARA_1__</p>
+      <p>__I18N_BOTTOMLINE_PARA_2__</p>
+      <p>__I18N_BOTTOMLINE_PARA_3__</p>
+      <p>__I18N_BOTTOMLINE_PARA_4__</p>
+      <p>__I18N_BOTTOMLINE_PARA_5__</p>
+      <p class="conclusion"><em>__I18N_BOTTOMLINE_CONCLUSION__</em></p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="links">
+      <a href="https://github.com/skywalkerqqq/geo-optimizer-skill">__I18N_FOOTER_GITHUB__</a>
+      <a href="https://pypi.org/project/geo-optimizer-skill/">__I18N_FOOTER_PYPI__</a>
+      <a href="https://auriti-labs.github.io/geo-optimizer-skill/">__I18N_FOOTER_DOCS__</a>
+      <a href="https://github.com/skywalkerqqq">__I18N_FOOTER_ABOUT__</a>
+      <a href="https://github.com/skywalkerqqq/geo-optimizer-skill/issues">__I18N_FOOTER_ISSUES__</a>
+      <a href="/">__I18N_FOOTER_RUNAUDIT__</a>
+    </div>
+    <div class="credit">__I18N_FOOTER_CREDIT__</div>
+  </footer>
+</div>
+
+<script__NONCE_ATTR__>
+(function(){
+  fetch('/api/stats').then(function(r){return r.json()}).then(function(d){
+    var el=document.getElementById('nav-stars');
+    if(el&&d.github_stars){el.textContent='★ '+d.github_stars}
+  }).catch(function(){});
+})();
+document.getElementById('nav-ham').addEventListener('click',function(){
+  document.querySelector('.nav-links').classList.toggle('open');
+  this.textContent=this.textContent==='☰'?'✕':'☰';
+});
+document.querySelectorAll('.nav-dropdown-toggle').forEach(function(btn){
+  btn.addEventListener('click',function(e){
+    e.stopPropagation();
+    var dd=this.closest('.nav-dropdown');
+    dd.classList.toggle('open');
+    this.setAttribute('aria-expanded',dd.classList.contains('open'));
+  });
+});
+document.addEventListener('click',function(){
+  document.querySelectorAll('.nav-dropdown.open').forEach(function(dd){
+    dd.classList.remove('open');
+    dd.querySelector('.nav-dropdown-toggle').setAttribute('aria-expanded','false');
+  });
+});
+</script>
+
+<!-- Floating cookie settings button -->
+<a href="/privacy#cookies" class="cookie-float-btn" title="__I18N_COOKIE_TITLE__" aria-label="__I18N_COOKIE_TITLE__">
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+    <circle cx="8" cy="9" r="1.5" fill="currentColor"/>
+    <circle cx="15" cy="8" r="1" fill="currentColor"/>
+    <circle cx="14" cy="14" r="1.5" fill="currentColor"/>
+    <circle cx="9" cy="15" r="1.5" fill="currentColor"/>
+    <circle cx="17" cy="13" r="1" fill="currentColor"/>
+  </svg>
+</a>
+
+</body>
+</html>
+"""
+
+
+def main():
+    text = HEAD_AND_STYLE + BODY
+    TPL.write_text(text, encoding="utf-8")
+    print(f"wrote {TPL} ({len(text)} chars)")
+
+
+if __name__ == "__main__":
+    main()

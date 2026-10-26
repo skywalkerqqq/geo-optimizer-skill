@@ -1,0 +1,65 @@
+# Example / dogfooding workflow for the GEO Optimizer GitHub Action.
+# Runs a GEO audit on the AgencyPilot site every Monday and on push to main.
+
+name: GEO Audit (dogfooding)
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # every Monday at 6 UTC
+
+permissions:
+  contents: read
+  security-events: write # required for SARIF upload
+
+jobs:
+  geo-audit:
+    name: GEO Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Basic example — audit with JSON output
+      - name: Run GEO Audit
+        id: geo
+        uses: ./
+        with:
+          url: https://skywalkerqqq.github.io/geo-optimizer-skill
+          min-score: 40
+          format: json
+
+      # Show results in job summary
+      - name: Print results
+        run: |
+          echo "## 🎯 GEO Audit Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Score | **${{ steps.geo.outputs.score }}**/100 |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Band | \`${{ steps.geo.outputs.band }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Report | \`${{ steps.geo.outputs.report }}\` |" >> "$GITHUB_STEP_SUMMARY"
+
+      # Upload report as artifact (skip if audit produced no report)
+      - name: Upload report
+        if: steps.geo.outputs.report != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: geo-report
+          path: ${{ steps.geo.outputs.report }}
+          retention-days: 30
+
+  # SARIF example — visible in GitHub Security tab
+  geo-sarif:
+    name: GEO Audit (SARIF)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Run GEO Audit (SARIF)
+        uses: ./
+        with:
+          url: https://skywalkerqqq.github.io/geo-optimizer-skill
+          format: sarif

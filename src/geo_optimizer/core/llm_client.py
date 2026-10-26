@@ -1,0 +1,475 @@
+"""
+Provider-agnostic LLM query client for GEO Optimizer.
+
+Supports OpenAI, Anthropic, Groq (optional dependencies), Perplexity, MiniMax,
+Gemini and DeepSeek (all four use the core `requests` dependency, no extra
+needed).
+Configuration via environment variables:
+  GEO_LLM_PROVIDER  — openai | anthropic | groq | perplexity | minimax | gemini | deepseek (auto-detected if not set)
+  GEO_LLM_API_KEY   — API key (falls back to provider-specific env vars)
+  GEO_LLM_MODEL     — model name (provider default if not set)
+
+MiniMax-specific configuration:
+  MINIMAX_API_FORMAT    — openai | anthropic (default: openai)
+  MINIMAX_API_BASE_URL  — API root override for another supported region
+  MINIMAX_THINKING      — adaptive | disabled for MiniMax-M3 (MiniMax-M2.7 is always on)
+
+Requires: pip install geo-optimizer-skill[llm] (except Perplexity, MiniMax, Gemini and DeepSeek)
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from dataclasses import dataclass, field
+from typing import TypedDict, Union
+
+logger = logging.getLogger(__name__)
+
+_LLM_TIMEOUT = 30  # seconds — prevent indefinite hangs on unresponsive providers
+
+_PROVIDER_DEFAULTS = {
+    "openai": "gpt-4o-mini",
+    "anthropic": "claude-sonnet-4-20250514",
+    "groq": "llama-3.3-70b-versatile",
+    "perplexity": "sonar",
+    "minimax": "MiniMax-M3",
+    "gemini": "gemini-3.7-flash",
+    "deepseek": "deepseek-v4-flash",
+}
+
+# Keep existing providers ahead of newly added ones so a new key does not
+# silently change auto-detection for an established configuration.
+_PROVIDER_ENV_KEYS = {
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "groq": "GROQ_API_KEY",
+    "perplexity": "PERPLEXITY_API_KEY",
+    "minimax": "MINIMAX_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+}
+
+_PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions"
+_DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
+_MINIMAX_API_FORMATS = {
+    "openai": {"base_url": "https://api.minimax.io/v1", "path": "chat/completions"},
+    "anthropic": {"base_url": "https://api.minimax.io/anthropic", "path": "v1/messages"},
+}
+_MINIMAX_THINKING_MODES = {"adaptive", "disabled"}
+_GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+
+class LLMContentPart(TypedDict, total=False):
+    """A structured text or image content part passed to an LLM.
+
+    Content parts are forwarded to the provider verbatim, so the caller is
+    responsible for using the shape the selected wire format expects: the
+    OpenAI-compatible format reads ``{"type": "image_url", "image_url":
+    {...}}`` while the Anthropic-compatible format reads ``{"type": "image",
+    "source": {...}}``. Both key sets are declared optional so one type covers
+    both formats; a part built for one format is still rejected at runtime by
+    the other. Video parts are not modelled yet.
+    """
+
+    type: str
+    text: str
+    image_url: dict[str, object]
+    source: dict[str, object]
+
+
+LLMPrompt = Union[str, list[LLMContentPart]]
+
+
+@dataclass
+class LLMResponse:
+    """Response from an LLM query."""
+
+    text: str = ""
+    model: str = ""
+    provider: str = ""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    error: str | None = None
+    # Source URLs returned by answer engines that ground responses in live
+    # web search (Perplexity Sonar). Empty for parametric-only providers.
+    citations: list[str] = field(default_factory=list)
+
+
+def detect_provider() -> tuple[str | None, str | None]:
+    """Auto-detect LLM provider from environment variables.
+
+    Returns:
+        (provider_name, api_key) or (None, None) if no provider configured.
+    """
+    explicit = os.environ.get("GEO_LLM_PROVIDER", "").lower()
+    explicit_key = os.environ.get("GEO_LLM_API_KEY", "")
+
+    if explicit and explicit_key:
+        return explicit, explicit_key
+
+    for provider, env_key in _PROVIDER_ENV_KEYS.items():
+        key = os.environ.get(env_key, "")
+        if key:
+            return provider, key
+
+    return None, None
+
+
+def query_llm(
+    prompt: LLMPrompt,
+    *,
+    system: str = "",
+    provider: str | None = None,
+    api_key: str | None = None,
+    model: str | None = None,
+    max_tokens: int = 1024,
+) -> LLMResponse:
+    """Send a prompt to an LLM and return the response.
+
+    Args:
+        prompt: Plain text, or structured content parts the selected model and
+            wire format accept. See `LLMContentPart` for the caller's
+            responsibility when passing parts.
+        system: Optional system message.
+        provider: LLM provider (auto-detected if not set).
+        api_key: API key (auto-detected if not set).
+        model: Model name (provider default if not set).
+        max_tokens: Maximum response tokens.
+
+    Returns:
+        LLMResponse with text and metadata, or error if unavailable.
+    """
+    if provider is None or api_key is None:
+        detected_provider, detected_key = detect_provider()
+        provider = provider or detected_provider
+        api_key = api_key or detected_key
+
+    if not provider and not api_key:
+        return LLMResponse(
+            error="No LLM provider or API key configured. Set GEO_LLM_PROVIDER and GEO_LLM_API_KEY, or set a provider-specific key such as OPENAI_API_KEY."
+        )
+    if not provider:
+        return LLMResponse(error="No LLM provider specified. Set GEO_LLM_PROVIDER or pass provider explicitly.")
+    if not api_key:
+        return LLMResponse(
+            error=f"No API key provided for provider '{provider}'. Set GEO_LLM_API_KEY or the provider-specific API key."
+        )
+
+    model = model or os.environ.get("GEO_LLM_MODEL", "") or _PROVIDER_DEFAULTS.get(provider, "")
+
+    if provider == "openai":
+        return _query_openai(prompt, system=system, api_key=api_key, model=model, max_tokens=max_tokens)
+    if provider == "anthropic":
+        return _query_anthropic(prompt, system=system, api_key=api_key, model=model, max_tokens=max_tokens)
+    if provider == "groq":
+        return _query_groq(prompt, system=system, api_key=api_key, model=model, max_tokens=max_tokens)
+    if provider == "perplexity":
+        return _query_perplexity(prompt, system=system, api_key=api_key, model=model, max_tokens=max_tokens)
+    if provider == "minimax":
+        return _query_minimax(prompt, system=system, api_key=api_key, model=model, max_tokens=max_tokens)
+    if provider == "gemini":
+        return _query_gemini(prompt, system=system, api_key=api_key, model=model, max_tokens=max_tokens)
+    if provider == "deepseek":
+        return _query_deepseek(prompt, system=system, api_key=api_key, model=model, max_tokens=max_tokens)
+
+    return LLMResponse(error=f"Unknown provider: {provider}")
+
+
+def _query_openai(prompt: LLMPrompt, *, system: str, api_key: str, model: str, max_tokens: int) -> LLMResponse:
+    try:
+        from openai import OpenAI
+        from openai.types.chat import (
+            ChatCompletionSystemMessageParam,
+            ChatCompletionUserMessageParam,
+        )
+    except ImportError:
+        return LLMResponse(error="openai not installed (pip install geo-optimizer-skill[llm])")
+
+    try:
+        client = OpenAI(api_key=api_key, timeout=_LLM_TIMEOUT)
+        messages: list[ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam] = []
+        if system:
+            messages.append(ChatCompletionSystemMessageParam(role="system", content=system))
+        messages.append(ChatCompletionUserMessageParam(role="user", content=prompt))
+        resp = client.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens)
+        choice = resp.choices[0]
+        usage = resp.usage
+        return LLMResponse(
+            text=choice.message.content or "",
+            model=resp.model,
+            provider="openai",
+            prompt_tokens=usage.prompt_tokens if usage else 0,
+            completion_tokens=usage.completion_tokens if usage else 0,
+        )
+    except Exception as exc:
+        logger.warning("OpenAI query failed: %s: %s", type(exc).__name__, exc)
+        return LLMResponse(error=f"{type(exc).__name__}: {exc}", provider="openai", model=model)
+
+
+def _query_anthropic(prompt: LLMPrompt, *, system: str, api_key: str, model: str, max_tokens: int) -> LLMResponse:
+    try:
+        from anthropic import Anthropic
+    except ImportError:
+        return LLMResponse(error="anthropic not installed (pip install geo-optimizer-skill[llm])")
+
+    try:
+        client = Anthropic(api_key=api_key, timeout=_LLM_TIMEOUT)
+        kwargs: dict = {"model": model, "max_tokens": max_tokens, "messages": [{"role": "user", "content": prompt}]}
+        if system:
+            kwargs["system"] = system
+        resp = client.messages.create(**kwargs)
+        text = resp.content[0].text if resp.content else ""
+        return LLMResponse(
+            text=text,
+            model=resp.model,
+            provider="anthropic",
+            prompt_tokens=resp.usage.input_tokens if resp.usage else 0,
+            completion_tokens=resp.usage.output_tokens if resp.usage else 0,
+        )
+    except Exception as exc:
+        logger.warning("Anthropic query failed: %s: %s", type(exc).__name__, exc)
+        return LLMResponse(error=f"{type(exc).__name__}: {exc}", provider="anthropic", model=model)
+
+
+def _query_perplexity(prompt: LLMPrompt, *, system: str, api_key: str, model: str, max_tokens: int) -> LLMResponse:
+    """Query Perplexity Sonar via plain HTTP (OpenAI-compatible, returns web citations)."""
+    import requests
+
+    messages: list[dict] = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
+    try:
+        resp = requests.post(
+            _PERPLEXITY_API_URL,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"model": model, "messages": messages, "max_tokens": max_tokens},
+            timeout=_LLM_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        choice = (data.get("choices") or [{}])[0]
+        usage = data.get("usage") or {}
+        # Sonar exposes sources both as a flat `citations` list and as
+        # structured `search_results`; merge them preserving order.
+        citations = list(data.get("citations") or [])
+        for result in data.get("search_results") or []:
+            url = result.get("url", "")
+            if url and url not in citations:
+                citations.append(url)
+        return LLMResponse(
+            text=(choice.get("message") or {}).get("content", ""),
+            model=data.get("model", model),
+            provider="perplexity",
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+            citations=citations,
+        )
+    except Exception as exc:
+        logger.warning("Perplexity query failed: %s: %s", type(exc).__name__, exc)
+        return LLMResponse(error=f"{type(exc).__name__}: {exc}", provider="perplexity", model=model)
+
+
+def _query_groq(prompt: LLMPrompt, *, system: str, api_key: str, model: str, max_tokens: int) -> LLMResponse:
+    try:
+        from groq import Groq
+        from openai.types.chat import (
+            ChatCompletionSystemMessageParam,
+            ChatCompletionUserMessageParam,
+        )
+    except ImportError:
+        return LLMResponse(error="groq not installed (pip install geo-optimizer-skill[dev])")
+
+    try:
+        client = Groq(api_key=api_key, timeout=_LLM_TIMEOUT)
+        messages: list[ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam] = []
+        if system:
+            messages.append(ChatCompletionSystemMessageParam(role="system", content=system))
+        messages.append(ChatCompletionUserMessageParam(role="user", content=prompt))
+        resp = client.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens)
+        choice = resp.choices[0]
+        usage = resp.usage
+        return LLMResponse(
+            text=choice.message.content or "",
+            model=resp.model,
+            provider="groq",
+            prompt_tokens=usage.prompt_tokens if usage else 0,
+            completion_tokens=usage.completion_tokens if usage else 0,
+        )
+    except Exception as exc:
+        logger.warning("Groq query failed: %s: %s", type(exc).__name__, exc)
+        return LLMResponse(error=f"{type(exc).__name__}: {exc}", provider="groq", model=model)
+
+
+def _query_minimax(prompt: LLMPrompt, *, system: str, api_key: str, model: str, max_tokens: int) -> LLMResponse:
+    """Query MiniMax via either supported HTTP wire format."""
+    import requests
+
+    api_format = os.environ.get("MINIMAX_API_FORMAT", "openai").strip().lower()
+    api_config = _MINIMAX_API_FORMATS.get(api_format)
+    if api_config is None:
+        return LLMResponse(
+            error="Invalid MINIMAX_API_FORMAT; expected 'openai' or 'anthropic'",
+            provider="minimax",
+            model=model,
+        )
+
+    base_url = os.environ.get("MINIMAX_API_BASE_URL", api_config["base_url"]).strip().rstrip("/")
+    if not base_url:
+        return LLMResponse(error="MINIMAX_API_BASE_URL cannot be empty", provider="minimax", model=model)
+    api_url = f"{base_url}/{api_config['path']}"
+
+    thinking = os.environ.get("MINIMAX_THINKING", "").strip().lower()
+    if thinking and thinking not in _MINIMAX_THINKING_MODES:
+        return LLMResponse(
+            error="Invalid MINIMAX_THINKING; expected 'adaptive' or 'disabled'",
+            provider="minimax",
+            model=model,
+        )
+
+    if api_format == "anthropic":
+        payload: dict = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+        }
+        if system:
+            payload["system"] = system
+    else:
+        messages: list[dict] = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        payload = {
+            "model": model,
+            "messages": messages,
+            "max_completion_tokens": max_tokens,
+            "reasoning_split": True,
+        }
+
+    if thinking:
+        payload["thinking"] = {"type": thinking}
+
+    try:
+        resp = requests.post(
+            api_url,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=_LLM_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        usage = data.get("usage") or {}
+
+        if api_format == "anthropic":
+            text = "".join(
+                block.get("text", "") for block in (data.get("content") or []) if block.get("type") == "text"
+            )
+            return LLMResponse(
+                text=text,
+                model=data.get("model", model),
+                provider="minimax",
+                prompt_tokens=usage.get("input_tokens", 0),
+                completion_tokens=usage.get("output_tokens", 0),
+            )
+
+        choice = (data.get("choices") or [{}])[0]
+        return LLMResponse(
+            text=(choice.get("message") or {}).get("content", ""),
+            model=data.get("model", model),
+            provider="minimax",
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+        )
+    except Exception as exc:
+        logger.warning("MiniMax query failed: %s: %s", type(exc).__name__, exc)
+        return LLMResponse(error=f"{type(exc).__name__}: {exc}", provider="minimax", model=model)
+
+
+def _query_gemini(prompt: LLMPrompt, *, system: str, api_key: str, model: str, max_tokens: int) -> LLMResponse:
+    """Query Gemini via the Generative Language API (plain HTTP, no SDK needed)."""
+    import requests
+
+    if isinstance(prompt, str):
+        parts: list[dict] = [{"text": prompt}]
+    else:
+        # Gemini's part shape ({"text": ...} / {"inline_data": ...}) differs from both
+        # the OpenAI- and Anthropic-compatible LLMContentPart shapes; only the text
+        # field is portable across all three, so that is what gets forwarded here.
+        parts = [{"text": item["text"]} for item in prompt if "text" in item]
+
+    payload: dict = {
+        "contents": [{"role": "user", "parts": parts}],
+        "generationConfig": {"maxOutputTokens": max_tokens},
+    }
+    if system:
+        payload["systemInstruction"] = {"parts": [{"text": system}]}
+
+    try:
+        resp = requests.post(
+            _GEMINI_API_URL.format(model=model),
+            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+            json=payload,
+            timeout=_LLM_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        candidates = data.get("candidates") or []
+        if not candidates:
+            # No candidate can mean the prompt was blocked by a safety filter — an
+            # empty string here would silently read as "brand not mentioned" instead
+            # of "the query never actually ran".
+            block_reason = (data.get("promptFeedback") or {}).get("blockReason")
+            if block_reason:
+                return LLMResponse(error=f"Gemini blocked the prompt: {block_reason}", provider="gemini", model=model)
+            return LLMResponse(text="", model=model, provider="gemini")
+
+        candidate_parts = (candidates[0].get("content") or {}).get("parts") or []
+        text = "".join(part.get("text", "") for part in candidate_parts)
+        usage = data.get("usageMetadata") or {}
+
+        return LLMResponse(
+            text=text,
+            model=data.get("modelVersion", model),
+            provider="gemini",
+            prompt_tokens=usage.get("promptTokenCount", 0),
+            completion_tokens=usage.get("candidatesTokenCount", 0),
+        )
+    except Exception as exc:
+        logger.warning("Gemini query failed: %s: %s", type(exc).__name__, exc)
+        return LLMResponse(error=f"{type(exc).__name__}: {exc}", provider="gemini", model=model)
+
+
+def _query_deepseek(prompt: LLMPrompt, *, system: str, api_key: str, model: str, max_tokens: int) -> LLMResponse:
+    """Query DeepSeek via plain HTTP (fully OpenAI-compatible wire format)."""
+    import requests
+
+    messages: list[dict] = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
+    try:
+        resp = requests.post(
+            _DEEPSEEK_API_URL,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"model": model, "messages": messages, "max_tokens": max_tokens},
+            timeout=_LLM_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        choice = (data.get("choices") or [{}])[0]
+        usage = data.get("usage") or {}
+        return LLMResponse(
+            text=(choice.get("message") or {}).get("content", ""),
+            model=data.get("model", model),
+            provider="deepseek",
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+        )
+    except Exception as exc:
+        logger.warning("DeepSeek query failed: %s: %s", type(exc).__name__, exc)
+        return LLMResponse(error=f"{type(exc).__name__}: {exc}", provider="deepseek", model=model)

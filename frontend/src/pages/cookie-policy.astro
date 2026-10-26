@@ -1,0 +1,294 @@
+---
+import Shell from '../components/Shell.astro';
+import {
+  cookieRegistry,
+  getCategories,
+  getCategoryLabel,
+  getCategoryDescription,
+  getCookiesByCategory,
+  CONSENT_VERSION,
+} from '../lib/cookieRegistry';
+
+const lastUpdated = 'August 5, 2026';
+const categories = getCategories();
+
+// Generated from cookieRegistry — the same module the consent banner reads. The
+// previous version of this page kept the inventory in hand-written HTML, which
+// drifted away from the code and ended up telling visitors that Google Analytics
+// was not in use while it was. A generated table cannot drift.
+const typeLabels: Record<string, string> = {
+  cookie: 'Cookie',
+  localStorage: 'localStorage',
+  sessionStorage: 'sessionStorage',
+  'external-request': 'External request',
+};
+
+const categoryClasses: Record<string, string> = {
+  necessary: 'text-accent-success border-accent-success/20',
+  preferences: 'text-accent-electric border-accent-electric/20',
+  analytics: 'text-accent-teal border-accent-teal/20',
+  marketing: 'text-accent-violet border-accent-violet/20',
+};
+---
+
+<Shell
+  title="Cookie Policy — GeoReady"
+  description="Every cookie and storage key used on geoready.dev: purpose, provider, legal basis, duration, and how to change or withdraw your consent."
+  canonical="https://geoready.dev/cookie-policy/"
+>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-16">
+    <header class="mb-12 md:mb-16">
+      <div class="flex items-center gap-2 text-[10px] font-mono text-text-muted uppercase tracking-wider">
+        <span>GeoReady</span>
+        <span class="w-1 h-1 rounded-full bg-text-muted"></span>
+        <span>Cookie Policy</span>
+      </div>
+      <h1 class="mt-3 font-display text-3xl md:text-4xl font-bold text-text-primary leading-tight tracking-tight">Cookie Policy</h1>
+      <p class="mt-3 text-sm text-text-secondary">Last updated: {lastUpdated} · Consent version {CONSENT_VERSION}</p>
+      <p class="mt-4 text-base text-text-secondary leading-relaxed max-w-3xl">
+        This page covers <strong class="text-text-primary">geoready.dev</strong>, the public
+        website. The inventory below is generated from the same configuration the consent
+        banner uses, so what you read here is what the site actually does. The signed-in
+        application has its own policy at
+        <a href="https://app.geoready.dev/cookie-policy" class="text-accent-teal hover:underline">app.geoready.dev/cookie-policy</a>.
+      </p>
+    </header>
+
+    <div class="space-y-10 text-text-secondary leading-relaxed">
+      <section>
+        <h2 class="text-lg font-semibold text-text-primary mb-3">Cookies, local storage, and why both matter</h2>
+        <p class="text-sm mb-3">
+          A cookie is a small file a site stores on your device. Browsers also offer
+          <strong class="text-text-primary">localStorage</strong>, which does the same job
+          without sending anything back with each request. The law treats them the same way:
+          storing or reading information on your device requires your consent unless it is
+          strictly necessary to provide what you asked for (ePrivacy Directive art. 5(3)).
+          We list both below and ask for consent for both.
+        </p>
+        <p class="text-sm mb-3">
+          Nothing in the analytics or marketing categories is loaded before you accept it.
+          Rejecting costs you nothing: every page, the audit, and the tools work identically
+          either way.
+        </p>
+        <p class="text-sm">
+          Your choice also travels as a signal. Through
+          <strong class="text-text-primary">Google Consent Mode v2</strong> this site declares
+          all four Google consent types — analytics storage, ad storage, ad user data and ad
+          personalisation — as <em>denied</em> before any Google tag can run, and updates them
+          only when you decide. Because the Analytics property is linked to Google Ads for
+          conversion measurement, that declaration is what keeps a refusal meaningful on
+          Google's side rather than only on ours. No advertising cookie is set here in either
+          case.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-text-primary mb-3">Categories</h2>
+        <div class="space-y-3 mt-4">
+          {categories.map((cat, i) => (
+            <div class="rounded-lg border border-border bg-bg-surface p-4">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="text-sm font-semibold text-text-primary">{i + 1}. {getCategoryLabel(cat)}</h3>
+                {cat === 'necessary' ? (
+                  <span class="text-[10px] font-mono uppercase tracking-wider text-accent-success">always on</span>
+                ) : (
+                  <span class="text-[10px] font-mono uppercase tracking-wider text-text-muted">off unless you accept</span>
+                )}
+              </div>
+              <p class="text-sm">{getCategoryDescription(cat)}</p>
+              <p class="mt-2 text-xs text-text-muted">
+                {getCookiesByCategory(cat).length === 0
+                  ? 'Nothing is stored in this category today.'
+                  : `${getCookiesByCategory(cat).length} item(s) — see the inventory below.`}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-text-primary mb-3">Full inventory</h2>
+        <p class="mb-4 text-sm">
+          Every cookie and storage key this site can create, with the legal basis for each.
+          Names shown with <code class="font-mono text-xs">&lt;…&gt;</code> contain a
+          container identifier that varies.
+        </p>
+
+        <div class="overflow-x-auto rounded-xl border border-border">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-bg-subtle text-text-muted text-[11px] font-mono uppercase tracking-wider">
+                <th class="px-4 py-3 text-left font-semibold border-b border-border">Name</th>
+                <th class="px-4 py-3 text-left font-semibold border-b border-border">Category</th>
+                <th class="px-4 py-3 text-left font-semibold border-b border-border">Type</th>
+                <th class="px-4 py-3 text-left font-semibold border-b border-border">Provider</th>
+                <th class="px-4 py-3 text-left font-semibold border-b border-border">Duration</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+              {cookieRegistry.map((c, i) => (
+                <tr class={i % 2 === 0 ? 'bg-bg-surface align-top' : 'bg-bg-base align-top'}>
+                  <td class="px-4 py-3 font-mono text-xs text-text-primary whitespace-nowrap">{c.name}</td>
+                  <td class="px-4 py-3">
+                    <span class={`text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded border ${categoryClasses[c.category]}`}>
+                      {getCategoryLabel(c.category)}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-xs">{typeLabels[c.type] ?? c.type}</td>
+                  <td class="px-4 py-3 text-xs">{c.provider}</td>
+                  <td class="px-4 py-3 text-xs">{c.duration}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-6 space-y-4">
+          {cookieRegistry.map((c) => (
+            <div class="rounded-lg border border-border bg-bg-surface p-4">
+              <div class="flex flex-wrap items-center gap-2 mb-2">
+                <code class="font-mono text-xs font-semibold text-text-primary">{c.name}</code>
+                <span class={`text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded border ${categoryClasses[c.category]}`}>
+                  {getCategoryLabel(c.category)}
+                </span>
+                <span class="text-[11px] font-mono text-text-muted">
+                  {typeLabels[c.type] ?? c.type} · {c.firstOrThirdParty === 'first' ? 'first-party' : 'third-party'} · {c.domain}
+                </span>
+              </div>
+              <p class="text-sm mb-2">{c.purpose}</p>
+              <dl class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                <div>
+                  <dt class="inline text-text-muted">Service: </dt>
+                  <dd class="inline">{c.service}</dd>
+                </div>
+                <div>
+                  <dt class="inline text-text-muted">Duration: </dt>
+                  <dd class="inline">{c.duration}</dd>
+                </div>
+                <div class="sm:col-span-2">
+                  <dt class="inline text-text-muted">Legal basis: </dt>
+                  <dd class="inline">{c.legalBasis}</dd>
+                </div>
+                {c.dataShared && (
+                  <div class="sm:col-span-2">
+                    <dt class="inline text-text-muted">Data involved: </dt>
+                    <dd class="inline">{c.dataShared}</dd>
+                  </div>
+                )}
+              </dl>
+              {c.notes && <p class="mt-2 text-xs text-text-muted">{c.notes}</p>}
+              {c.privacyPolicyUrl && (
+                <p class="mt-2 text-xs">
+                  <a href={c.privacyPolicyUrl} target="_blank" rel="noopener noreferrer" class="text-accent-teal hover:underline">
+                    Provider privacy policy →
+                  </a>
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div class="mt-6 text-xs text-text-muted space-y-2">
+          <p>
+            <strong class="text-text-secondary">Fonts:</strong> self-hosted and served from
+            this domain. No request to an external CDN, no cookie.
+          </p>
+          <p>
+            <strong class="text-text-secondary">Astro, React, Tailwind:</strong> the framework
+            itself sets no cookie and stores nothing. There is no session cookie on this site.
+          </p>
+          <p>
+            <strong class="text-text-secondary">Launchpadly badge:</strong> the directory badge in
+            the footer is an image loaded from launchpadly.co. Displaying it sends your IP address
+            and browser type to that provider, as any remote image does. It sets no cookie, and
+            it is the only third-party request a page makes without your action.
+          </p>
+          <p>
+            <strong class="text-text-secondary">Guides:</strong> written in the Sanity content
+            platform but rendered into static pages at build time. Reading a guide makes no
+            request to Sanity from your browser.
+          </p>
+          <p>
+            <strong class="text-text-secondary">Links out:</strong> GitHub, PyPI and similar
+            links in the footer are plain links. Nothing is sent to those sites unless you
+            click.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-text-primary mb-3">Consent Mode</h2>
+        <p class="text-sm">
+          Before any Google tag can initialise, the site declares
+          <strong class="text-text-primary">Google Consent Mode v2</strong> with all four
+          storage types — <code class="font-mono text-xs">ad_storage</code>,
+          <code class="font-mono text-xs">analytics_storage</code>,
+          <code class="font-mono text-xs">ad_user_data</code>,
+          <code class="font-mono text-xs">ad_personalization</code> — set to denied, and
+          updates them only after you choose. This runs before the tag loads, which is the
+          only point at which the declaration is effective.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-text-primary mb-3">Changing or withdrawing your consent</h2>
+        <p class="text-sm mb-3">
+          Click the <strong class="text-text-primary">Cookies</strong> button at the bottom
+          left of any page. Withdrawing analytics consent takes effect immediately: the
+          matching cookies and storage keys are deleted from your device and the Google tag
+          is told that consent is denied. Withdrawing is as easy as accepting was — same
+          number of clicks, no account needed.
+        </p>
+        <p class="text-sm mb-3">
+          Your choice is stored per device and per domain. Setting it here does not change it
+          on app.geoready.dev, and vice versa — each domain asks separately, as the rules
+          require.
+        </p>
+        <p class="text-sm mb-3">You can also manage cookies in your browser:</p>
+        <ul class="list-disc pl-5 space-y-1 text-sm">
+          <li><a href="https://support.google.com/chrome/answer/95647" target="_blank" rel="noopener noreferrer" class="text-accent-teal hover:underline">Google Chrome</a></li>
+          <li><a href="https://support.mozilla.org/en-US/kb/cookies-information-websites-store-on-your-computer" target="_blank" rel="noopener noreferrer" class="text-accent-teal hover:underline">Mozilla Firefox</a></li>
+          <li><a href="https://support.apple.com/en-us/105082" target="_blank" rel="noopener noreferrer" class="text-accent-teal hover:underline">Safari</a></li>
+          <li><a href="https://support.microsoft.com/en-us/microsoft-edge" target="_blank" rel="noopener noreferrer" class="text-accent-teal hover:underline">Microsoft Edge</a></li>
+        </ul>
+        <p class="text-sm mt-3">
+          Clearing browser storage removes the record of your choice too, so the banner will
+          ask again.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-text-primary mb-3">Data protection</h2>
+        <p class="text-sm">
+          Who processes your data, on what legal basis, where it goes and how long it is kept:
+          see the <a href="/privacy/" class="text-accent-teal hover:underline">Privacy Policy</a>.
+          Questions or requests:
+          <a href="mailto:skywalkerqqq@users.noreply.github.com" class="text-accent-teal hover:underline">skywalkerqqq@users.noreply.github.com</a>.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-text-primary mb-3">Updates</h2>
+        <p class="text-sm">
+          When we add or remove something that stores data on your device, this page and the
+          consent version change together. A new consent version means the banner asks again
+          rather than carrying over a choice you made about a different inventory — which is
+          why version {CONSENT_VERSION} re-prompted everyone.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Cookie Policy — GeoReady",
+    "description": "Every cookie and storage key used on geoready.dev: purpose, provider, legal basis, duration, and how to change or withdraw your consent.",
+    "url": "https://geoready.dev/cookie-policy/",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "GeoReady",
+      "url": "https://geoready.dev"
+    }
+  })} />
+</Shell>

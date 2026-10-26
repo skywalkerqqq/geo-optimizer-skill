@@ -1,0 +1,55 @@
+{
+  "_comment": "Frozen fixture for JSON contract v1 — do not edit fields without bumping schema_version",
+  "_contract_version": 1,
+  "required_top_level_keys": [
+    "schema_version",
+    "url",
+    "timestamp",
+    "score",
+    "band",
+    "score_breakdown",
+    "recommendations",
+    "http_status",
+    "page_size",
+    "error",
+    "robots",
+    "llms",
+    "schema",
+    "meta",
+    "content",
+    "signals",
+    "ai_discovery",
+    "brand_entity",
+    "checks"
+  ],
+  "required_score_breakdown_keys": [
+    "robots",
+    "llms",
+    "schema",
+    "meta",
+    "content",
+    "signals",
+    "ai_discovery",
+    "brand_entity"
+  ],
+  "required_checks_keys": [
+    "robots_txt",
+    "robots_citation_ok",
+    "llms_txt",
+    "llms_found",
+    "llms_full",
+    "schema_jsonld",
+    "meta_tags",
+    "content",
+    "signals",
+    "ai_discovery",
+    "brand_entity"
+  ],
+  "checks_alias_map": {
+    "robots_citation_ok": "robots.citation_bots_ok",
+    "llms_found": "llms.found",
+    "llms_full": "llms.has_full"
+  },
+  "band_values": ["critical", "foundation", "good", "excellent"],
+  "score_range": [0, 100]
+}

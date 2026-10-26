@@ -1,0 +1,68 @@
+<!-- Cookie Consent Banner - GDPR Compliant (HTML Only) -->
+<!-- Cookie Banner Modal -->
+<div id="cookie-modal" class="cookie-modal" role="dialog" aria-modal="true" hidden>
+  <div class="cookie-modal-overlay" id="cookie-modal-overlay"></div>
+  <div class="cookie-modal-content">
+    <div class="cookie-modal-header">
+      <h2>Impostazioni Cookie</h2>
+      <button type="button" class="cookie-modal-close" id="cookie-modal-close">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="cookie-modal-body">
+      <div class="cookie-category">
+        <div class="cookie-category-header">
+          <h3>Cookie Essenziali (Necessari)</h3>
+          <label class="cookie-switch">
+            <input type="checkbox" id="cookie-essential" checked disabled>
+            <span class="cookie-slider"></span>
+          </label>
+        </div>
+        <p class="cookie-category-desc">
+          Questi cookie sono strettamente necessari per il funzionamento del sito e non possono essere disattivati.
+          includono cookie per l'autenticazione, la sicurezza e le preferenze di sessione.
+        </p>
+      </div>
+
+      <div class="cookie-category">
+        <div class="cookie-category-header">
+          <h3>Cookie Analitici (Google Analytics)</h3>
+          <label class="cookie-switch">
+            <input type="checkbox" id="cookie-analytics">
+            <span class="cookie-slider"></span>
+          </label>
+        </div>
+        <p class="cookie-category-desc">
+          Aiutano a capire come i visitatori interagiscono con il sito. I dati sono aggregati e anonimi,
+          senza alcuna identificazione personale. Disabilitandoli, non verrà caricato Google Analytics.
+        </p>
+      </div>
+
+      <div class="cookie-category">
+        <div class="cookie-category-header">
+          <h3>Cookie Marketing/Targeting</h3>
+          <label class="cookie-switch">
+            <input type="checkbox" id="cookie-marketing">
+            <span class="cookie-slider"></span>
+          </label>
+        </div>
+        <p class="cookie-category-desc">
+          Utilizzati per mostrare annunci rilevanti. Disabilitandoli, vedrai annunci meno personalizzati.
+        </p>
+      </div>
+    </div>
+
+    <div class="cookie-modal-footer">
+      <button type="button" class="cookie-btn cookie-btn-secondary" id="cookie-save">
+        Salva preferenze
+      </button>
+      <button type="button" class="cookie-btn cookie-btn-primary" id="cookie-reject-all">
+        Rifiuta tutto
+      </button>
+    </div>
+  </div>
+</div>

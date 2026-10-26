@@ -1,0 +1,55 @@
+name: 🔍 New Audit Check
+description: Propose a new check for geo audit
+title: "[CHECK] "
+labels: ["feature", "audit-check"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        GEO Optimizer's audit checks are the core of the tool. Propose a new one here.
+
+  - type: input
+    id: check-name
+    attributes:
+      label: Check name
+      description: Short, descriptive name for the check.
+      placeholder: "external-citations"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-it-checks
+    attributes:
+      label: What does it check?
+      description: Describe what this check verifies and why it matters for GEO.
+      placeholder: "Checks whether the page links to authoritative external sources, which increases AI citation probability by +30-115% (Princeton KDD 2024)."
+    validations:
+      required: true
+
+  - type: textarea
+    id: pass-fail
+    attributes:
+      label: Pass / Fail criteria
+      description: When does the check pass? When does it fail? What about warnings?
+      value: |
+        - ✅ Pass: ...
+        - ⚠️ Warning: ...
+        - ❌ Fail: ...
+    validations:
+      required: true
+
+  - type: input
+    id: max-score
+    attributes:
+      label: Suggested max score
+      description: "How many points should this check be worth? (Current total: 100)"
+      placeholder: "10"
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence / Research
+      description: Link to papers, data, or documentation supporting this check.
+      placeholder: "Princeton KDD 2024 (arxiv.org/abs/2311.09735) — Cite Sources method: +30-115% visibility"
+    validations:
+      required: true

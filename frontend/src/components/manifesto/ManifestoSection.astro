@@ -1,0 +1,85 @@
+---
+import type { ManifestoSection } from '../../lib/manifestoContent';
+
+interface Props {
+  section: ManifestoSection;
+}
+
+const { section } = Astro.props;
+const hasItems = section.items && section.items.length > 0;
+const isGrid = hasItems && (section.items?.length || 0) >= 4;
+---
+
+<section id={section.id} class="scroll-mt-24">
+  <header class="mb-6">
+    <span class="font-mono text-sm text-accent-teal tracking-wider">
+      {section.number}
+    </span>
+    <h2 class="mt-1 font-display text-xl md:text-2xl font-bold text-text-primary leading-snug">
+      {section.title}
+    </h2>
+    {section.intro && (
+      <p class="mt-2 text-sm text-text-secondary leading-relaxed max-w-2xl">
+        {section.intro}
+      </p>
+    )}
+  </header>
+
+  {section.paragraphs && (
+    <div class="space-y-4 max-w-2xl">
+      {section.paragraphs.map((p) => (
+        <p class="text-sm text-text-secondary leading-relaxed">{p}</p>
+      ))}
+    </div>
+  )}
+
+  {section.quote && (
+    <blockquote class="mt-6 pl-5 border-l-2 border-accent-teal" cite="https://geoready.dev/manifesto">
+      <p class="text-sm font-medium text-text-primary italic leading-relaxed">
+        «{section.quote}»
+      </p>
+    </blockquote>
+  )}
+
+  {section.references && section.references.length > 0 && (
+    <div class="mt-6 flex flex-wrap items-center gap-3 text-sm">
+      {section.references.map((ref) => (
+        <a
+          href={ref.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 text-accent-teal hover:text-accent-teal-dark transition-colors"
+        >
+          <span>{ref.label}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
+      ))}
+    </div>
+  )}
+
+  {hasItems && (
+    <div class={`mt-6 ${isGrid ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : 'space-y-3'}`}>
+      {section.items?.map((item) => (
+        <div class="rounded-lg border border-border bg-bg-surface p-4 transition-colors hover:border-accent-teal/20">
+          <h3 class="text-sm font-semibold text-text-primary">
+            {item.title}
+          </h3>
+          <p class="mt-1.5 text-sm text-text-secondary leading-relaxed">
+            {item.description}
+          </p>
+          {item.points && (
+            <ul class="mt-2 space-y-1">
+              {item.points.map((pt) => (
+                <li class="text-[11px] font-mono text-text-muted">{pt}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+</section>

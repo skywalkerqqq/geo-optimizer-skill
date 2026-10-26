@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "geo-optimizer": {
+      "command": ".venv/bin/geo-mcp",
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}

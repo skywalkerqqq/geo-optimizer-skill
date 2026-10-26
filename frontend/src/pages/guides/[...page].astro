@@ -1,0 +1,370 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Shell from '../../components/Shell.astro';
+import NewsletterSignup from '../../components/NewsletterSignup';
+import ScoreSurface from '../../components/product/ScoreSurface.astro';
+import { guidePrimaryVisuals } from '../../lib/articleVisuals';
+import { getArticlesByCategory, urlForImage } from '../../utils/sanity';
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const articles = await getArticlesByCategory('guides');
+  return paginate(articles, { pageSize: 6 });
+}) satisfies GetStaticPaths;
+
+const { page } = Astro.props;
+const articles = page.data;
+const canonical = `https://geoready.dev/guides/${page.currentPage > 1 ? `${page.currentPage}/` : ''}`;
+const title = page.currentPage > 1
+  ? `Guides — Page ${page.currentPage} of ${page.lastPage} — GeoReady`
+  : 'Guides — AI Search Visibility & Generative Engine Optimization';
+const guideActionLinks = [
+  { href: '/ai-seo-audit/', label: 'AI SEO audit' },
+  { href: '/chatgpt-visibility-checker/', label: 'ChatGPT visibility' },
+  { href: '/perplexity-citation-checker/', label: 'Perplexity citations' },
+  { href: '/research/', label: 'Research foundation' },
+] as const;
+
+const guideToolCards = [
+  {
+    href: '/ai-seo-audit/',
+    title: 'Free AI SEO audit',
+    copy:
+      'Check crawler access, schema, llms.txt, content quality, AI discovery, and entity signals before prioritizing fixes.',
+    meta: 'Audit',
+    dataCta: 'guides_tools_ai_seo_audit',
+  },
+  {
+    href: '/chatgpt-visibility-checker/',
+    title: 'ChatGPT visibility checker',
+    copy:
+      'Use this path when the question is whether ChatGPT can understand, mention, or cite a website.',
+    meta: 'Visibility',
+    dataCta: 'guides_tools_chatgpt_visibility',
+  },
+  {
+    href: '/perplexity-citation-checker/',
+    title: 'Perplexity citation checker',
+    copy:
+      'Inspect source-backed answers and see whether Perplexity-style results cite your domain or competitors.',
+    meta: 'Citations',
+    dataCta: 'guides_tools_perplexity_citations',
+  },
+  {
+    href: '/tools/llms-txt-generator/',
+    title: 'Free llms.txt generator',
+    copy:
+      'Generate a starter llms.txt from a sitemap, then publish the editable Markdown at the domain root.',
+    meta: 'Tool',
+    dataCta: 'guides_tools_llms_generator',
+  },
+] as const;
+
+const guideIntentCards = [
+  {
+    href: '/ai-seo-audit-for-saas/',
+    title: 'AI SEO audit for SaaS',
+    copy: 'Audit product, pricing, comparison, alternative, and docs pages before buyer-intent prompts send users elsewhere.',
+    dataCta: 'guides_intent_saas_audit',
+  },
+  {
+    href: '/chatgpt-visibility-audit/',
+    title: 'ChatGPT visibility audit',
+    copy: 'Find the access, entity, schema, or content blocker that keeps a page out of ChatGPT-style answers.',
+    dataCta: 'guides_intent_chatgpt_audit',
+  },
+  {
+    href: '/perplexity-citation-monitoring/',
+    title: 'Perplexity citation monitoring',
+    copy: 'Move from one citation snapshot to recurring checks for source losses and competitor replacements.',
+    dataCta: 'guides_intent_perplexity_monitoring',
+  },
+  {
+    href: '/llms-txt-generator-wordpress/',
+    title: 'llms.txt generator for WordPress',
+    copy: 'Generate the file, publish it at the WordPress domain root, then audit AI discovery and crawler access.',
+    dataCta: 'guides_intent_wordpress_llms',
+  },
+] as const;
+
+const guideFaqs = [
+  {
+    q: 'What topics do these guides cover?',
+    a: 'Three areas: foundations (AI SEO, GEO, llms.txt, crawler access), citability (how answer engines choose and weigh sources), and execution (checklists and implementation paths for real sites).',
+  },
+  {
+    q: 'Are these guides free to read?',
+    a: 'Yes. Every guide is free with no account required, along with the free AI SEO check and other tools linked throughout.',
+  },
+  {
+    q: 'How do these guides relate to the GEO Optimizer scoring engine?',
+    a: "Each guide maps to specific signals in the open-source GEO Optimizer's 8-category score — the free tool measures whether a site actually implements what a given guide recommends.",
+  },
+  {
+    q: 'How often are new guides published?',
+    a: 'New guides are published on an ongoing basis, alongside monthly State of GEO benchmark reports that track what changes in AI search visibility.',
+  },
+] as const;
+
+function getCardImage(article: (typeof articles)[number]) {
+  if (article.ogImage?.asset) {
+    return {
+      src: urlForImage(article.ogImage).width(640).height(360).fit('crop').auto('format').url(),
+      alt: article.ogImage.alt || '',
+      fit: 'cover',
+    };
+  }
+
+  const fallback = guidePrimaryVisuals[article.slug.current as keyof typeof guidePrimaryVisuals];
+  return fallback
+    ? {
+        src: fallback.src,
+        alt: fallback.alt,
+        fit: 'contain',
+      }
+    : undefined;
+}
+---
+
+<Shell
+  title={title}
+  description="Practical, no-hype guides on making your website visible and citable to AI answer engines like ChatGPT, Perplexity, Claude, and Gemini."
+  canonical={canonical}
+>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-16">
+    {/* Header */}
+    <header class="mb-12 overflow-hidden rounded-[--radius-2xl] border border-border bg-bg-surface md:mb-16">
+      <div class="grid lg:grid-cols-[minmax(0,0.88fr)_minmax(420px,0.82fr)]">
+        <div class="p-6 md:p-10 lg:p-12">
+        <div class="flex items-center gap-2 text-[10px] font-mono text-text-muted uppercase tracking-wider">
+          <span>GeoReady</span>
+          <span class="w-1 h-1 rounded-full bg-text-muted" />
+          <span>Guides</span>
+        </div>
+
+        <h1 class="mt-4 max-w-3xl font-display text-4xl md:text-5xl font-bold text-text-primary leading-tight tracking-tight">
+          AI visibility guides for people who need the system to make sense.
+        </h1>
+
+        <p class="mt-5 max-w-2xl text-base md:text-lg text-text-secondary leading-relaxed">
+          Practical, research-grounded walkthroughs for making your site visible
+          and citable to AI answer engines. No guaranteed-ranking promises — just
+          the technical and content signals that help models find and quote you.
+        </p>
+
+        <div class="mt-8 grid gap-3 sm:grid-cols-3">
+          {[
+            ['01', 'Foundations', 'AI SEO, GEO, llms.txt, and crawler access.'],
+            ['02', 'Citability', 'How answer engines choose sources and references.'],
+            ['03', 'Execution', 'Checklists and implementation paths for real sites.'],
+          ].map(([num, label, text]) => (
+            <div class="border-l border-accent-teal/30 pl-4">
+              <p class="font-mono text-[11px] uppercase tracking-[0.16em] text-accent-teal">{num} {label}</p>
+              <p class="mt-1 text-sm leading-relaxed text-text-secondary">{text}</p>
+            </div>
+          ))}
+        </div>
+
+        <div class="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+          {guideActionLinks.map((link, index) => (
+            <>
+              <a href={link.href} class="text-accent-teal hover:text-accent-teal-dark transition-colors">
+                {link.label}
+              </a>
+              {index < guideActionLinks.length - 1 && <span class="text-text-muted">/</span>}
+            </>
+          ))}
+        </div>
+      </div>
+
+        <div class="flex items-center border-t border-border bg-bg-subtle p-8 lg:border-l lg:border-t-0">
+          <ScoreSurface variant="light" score={72} band="Good" class="w-full"
+            rows={[
+              { label: 'Access · crawlable', delta: '+18', state: 'good' },
+              { label: 'Structure · llms.txt', delta: '+12', state: 'up' },
+              { label: 'Entity clarity', delta: '+10', state: 'up' },
+              { label: 'Citation signals', delta: '+8', state: 'good' },
+            ]} />
+        </div>
+      </div>
+    </header>
+
+    {/* Guide list */}
+    <ul class="grid gap-4 md:grid-cols-2">
+      {articles.map((a) => {
+        const cardImage = getCardImage(a);
+        return (
+        <li>
+          <a
+            href={`/guides/${a.slug.current}/`}
+            class="group block h-full overflow-hidden rounded-xl border border-border bg-bg-surface transition-colors hover:border-accent-teal/30"
+          >
+            {cardImage ? (
+              <div class="aspect-[16/9] w-full bg-bg-subtle">
+                <img
+                  src={cardImage.src}
+                  alt={cardImage.alt}
+                  width="640"
+                  height="360"
+                  loading="lazy"
+                  decoding="async"
+                  class={`h-full w-full ${cardImage.fit === 'contain' ? 'object-contain p-4 md:p-5' : 'object-cover'}`}
+                />
+              </div>
+            ) : null}
+            <div class="p-5 md:p-6">
+              <p class="mb-4 text-xs font-mono text-text-muted">
+                {new Date(a.datePublished).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+              <h2 class="font-display text-lg md:text-xl font-semibold text-text-primary leading-snug group-hover:text-accent-teal">
+                {a.title}
+              </h2>
+              <p class="mt-2 text-sm md:text-base text-text-secondary leading-relaxed">
+                {a.description}
+              </p>
+            </div>
+          </a>
+        </li>
+        );
+      })}
+    </ul>
+
+    {/* Pagination */}
+    {page.lastPage > 1 && (
+      <nav class="mt-10 flex items-center justify-between gap-4" aria-label="Guides pagination">
+        {page.url.prev ? (
+          <a
+            href={page.url.prev}
+            class="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent-teal/30 hover:text-text-primary"
+          >
+            ← Newer
+          </a>
+        ) : <span />}
+
+        <div class="flex items-center gap-1.5 font-mono text-xs text-text-muted">
+          {Array.from({ length: page.lastPage }, (_, i) => i + 1).map((n) => (
+            n === page.currentPage ? (
+              <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-teal font-semibold text-white">
+                {n}
+              </span>
+            ) : (
+              <a
+                href={n === 1 ? '/guides/' : `/guides/${n}/`}
+                class="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-bg-surface hover:text-text-primary"
+              >
+                {n}
+              </a>
+            )
+          ))}
+        </div>
+
+        {page.url.next ? (
+          <a
+            href={page.url.next}
+            class="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent-teal/30 hover:text-text-primary"
+          >
+            Older →
+          </a>
+        ) : <span />}
+      </nav>
+    )}
+
+    {/* Tools — strumenti gratuiti collegati alle guide */}
+    <section class="mt-12 border-t border-border pt-10 md:mt-16 md:pt-12">
+      <div class="grid gap-6 md:grid-cols-[minmax(0,0.55fr)_minmax(0,1fr)] md:items-start">
+        <div>
+          <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-accent-teal">From guide to action</p>
+          <h2 class="mt-2 font-display text-2xl font-semibold text-text-primary">Free tools</h2>
+          <p class="mt-3 text-sm leading-relaxed text-text-secondary">
+            Use the tools when a guide turns into an implementation task.
+          </p>
+        </div>
+        <ul class="grid gap-4 sm:grid-cols-2">
+          {guideToolCards.map((tool) => (
+            <li>
+              <a
+                href={tool.href}
+                data-cta={tool.dataCta}
+                class="block h-full rounded-[--radius-lg] border border-border bg-bg-surface p-5 md:p-6 transition-colors hover:border-accent-teal/30"
+              >
+                <h3 class="font-display text-base md:text-lg font-semibold text-text-primary leading-snug">
+                  {tool.title}
+                </h3>
+                <p class="mt-2 text-sm md:text-base text-text-secondary leading-relaxed">
+                  {tool.copy}
+                </p>
+                <p class="mt-3 text-xs font-mono text-text-muted">{tool.meta}</p>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    <section class="mt-12 border-t border-border pt-10 md:mt-16 md:pt-12">
+      <div class="grid gap-6 md:grid-cols-[minmax(0,0.55fr)_minmax(0,1fr)] md:items-start">
+        <div>
+          <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-accent-teal">High-intent paths</p>
+          <h2 class="mt-2 font-display text-2xl font-semibold text-text-primary">Pages for commercial questions</h2>
+          <p class="mt-3 text-sm leading-relaxed text-text-secondary">
+            Use these when the guide topic maps to a buyer, SaaS, WordPress, or monitoring workflow.
+          </p>
+        </div>
+        <ul class="grid gap-4 sm:grid-cols-2">
+          {guideIntentCards.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                data-cta={item.dataCta}
+                class="block h-full rounded-[--radius-lg] border border-border bg-bg-surface p-5 md:p-6 transition-colors hover:border-accent-teal/30"
+              >
+                <h3 class="font-display text-base md:text-lg font-semibold text-text-primary leading-snug">
+                  {item.title}
+                </h3>
+                <p class="mt-2 text-sm md:text-base text-text-secondary leading-relaxed">
+                  {item.copy}
+                </p>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+
+    {page.currentPage === 1 && (
+      <section class="mt-12 border-t border-border pt-10 md:mt-16 md:pt-12" aria-labelledby="guides-faq-heading">
+        <h2 id="guides-faq-heading" class="font-display text-2xl font-semibold text-text-primary">
+          Frequently asked questions
+        </h2>
+        <div class="mt-6 space-y-6">
+          {guideFaqs.map((faq) => (
+            <div>
+              <h3 class="font-display text-lg font-semibold text-text-primary">{faq.q}</h3>
+              <p class="mt-2 text-sm md:text-base leading-relaxed text-text-secondary">{faq.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section class="mt-12">
+      <NewsletterSignup
+        client:visible
+        source="newsletter-guides"
+        title="New guides + State of GEO data, monthly"
+        detail="One substantive email a month: new GEO guides, fresh benchmark findings, and what changed in AI search. No spam."
+      />
+    </section>
+  </div>
+
+  {page.currentPage === 1 && (
+    <script type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: guideFaqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.q,
+        acceptedAnswer: { '@type': 'Answer', text: faq.a },
+      })),
+    })} />
+  )}
+</Shell>

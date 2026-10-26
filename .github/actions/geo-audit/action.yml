@@ -1,0 +1,206 @@
+# Composite GitHub Action per GEO Audit
+# Check a website's visibility to AI search engines
+name: 'GEO Audit'
+description: 'Audit a website for Generative Engine Optimization (GEO) readiness'
+author: 'skywalkerqqq'
+
+branding:
+  icon: 'search'
+  color: 'blue'
+
+inputs:
+  url:
+    description: 'URL of the website to audit (e.g. https://example.com)'
+    required: true
+  min-score:
+    description: 'Minimum GEO score to pass (0-100). Build fails if score is below this threshold.'
+    required: false
+    default: '0'
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: '3.12'
+  format:
+    description: 'Additional output format: sarif, junit (generates extra report file alongside JSON)'
+    required: false
+    default: ''
+  version:
+    description: 'geo-optimizer-skill version to install (e.g. "2.1.0b1"). Default: latest.'
+    required: false
+    default: ''
+
+outputs:
+  score:
+    description: 'GEO score (0-100)'
+    value: ${{ steps.audit.outputs.score }}
+  band:
+    description: 'Score band (critical, foundation, good, excellent)'
+    value: ${{ steps.audit.outputs.band }}
+  report:
+    description: 'Path to the JSON report file'
+    value: ${{ steps.audit.outputs.report }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install geo-optimizer-skill
+      shell: bash
+      # Sanitize inputs.version: use env variable to prevent injection (#134)
+      # La versione viene validata con regex prima di essere usata nell'installazione
+      env:
+        GEO_VERSION: ${{ inputs.version }}
+      run: |
+        if [ -n "$GEO_VERSION" ]; then
+          # Valida formato versione: solo caratteri alfanumerici e .-
+          if ! echo "$GEO_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+[a-z0-9.-]*$'; then
+            echo "::error::Valore inputs.version non valido: '$GEO_VERSION'. Formato atteso: X.Y.Z[suffisso]"
+            exit 1
+          fi
+          pip install "geo-optimizer-skill==$GEO_VERSION"
+        else
+          pip install geo-optimizer-skill
+        fi
+
+    - name: Run GEO Audit
+      id: audit
+      shell: bash
+      env:
+        GEO_URL: ${{ inputs.url }}
+      run: |
+        # Esegui audit e salva report JSON
+        REPORT_FILE="geo-audit-report.json"
+        geo audit --url "$GEO_URL" --format json --output "$REPORT_FILE" || true
+
+        if [ ! -f "$REPORT_FILE" ]; then
+          echo "::error::GEO Audit failed — unable to generate report"
+          echo "score=0" >> "$GITHUB_OUTPUT"
+          echo "band=error" >> "$GITHUB_OUTPUT"
+          echo "report=" >> "$GITHUB_OUTPUT"
+          exit 1
+        fi
+
+        # Estrai score e band dal report JSON
+        SCORE=$(python3 -c "import json; d=json.load(open('$REPORT_FILE')); print(d.get('score', 0))")
+        BAND=$(python3 -c "import json; d=json.load(open('$REPORT_FILE')); print(d.get('band', 'unknown'))")
+
+        echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+        echo "band=$BAND" >> "$GITHUB_OUTPUT"
+        echo "report=$REPORT_FILE" >> "$GITHUB_OUTPUT"
+
+        echo "GEO Score: $SCORE/100 ($BAND)"
+
+    - name: Write Job Summary
+      shell: bash
+      env:
+        REPORT_FILE: ${{ steps.audit.outputs.report }}
+        GEO_SCORE: ${{ steps.audit.outputs.score }}
+        GEO_BAND: ${{ steps.audit.outputs.band }}
+        GEO_URL: ${{ inputs.url }}
+      run: |
+        python3 -c "
+        import json, os, sys
+
+        report_file = os.environ.get('REPORT_FILE', '')
+        score = os.environ.get('GEO_SCORE', '0')
+        band = os.environ.get('GEO_BAND', 'unknown')
+        url = os.environ.get('GEO_URL', '')
+        summary_path = os.environ.get('GITHUB_STEP_SUMMARY', '/dev/null')
+
+        emojis = {'excellent': '🏆', 'good': '✅', 'foundation': '⚠️', 'critical': '❌'}
+        emoji = emojis.get(band, '❓')
+
+        lines = []
+        lines.append(f'## {emoji} GEO Audit Report')
+        lines.append('')
+        lines.append('| Metric | Value |')
+        lines.append('|--------|-------|')
+        lines.append(f'| **URL** | \`{url}\` |')
+        lines.append(f'| **Score** | **{score}**/100 |')
+        lines.append(f'| **Band** | {band} |')
+        lines.append('')
+
+        if report_file and os.path.isfile(report_file):
+            with open(report_file) as f:
+                data = json.load(f)
+
+            checks = data.get('checks', {})
+            labels = {
+                'robots_txt': 'Robots.txt',
+                'llms_txt': 'llms.txt',
+                'schema_jsonld': 'Schema JSON-LD',
+                'meta_tags': 'Meta Tags',
+                'content': 'Content Quality',
+            }
+
+            lines.append('### Check Results')
+            lines.append('')
+            lines.append('| Check | Score | Status |')
+            lines.append('|-------|-------|--------|')
+            for key, label in labels.items():
+                check = checks.get(key, {})
+                s = check.get('score', 0)
+                m = check.get('max', 0)
+                icon = '✅' if check.get('passed', False) else '❌'
+                lines.append(f'| {label} | {s}/{m} | {icon} |')
+
+            recs = data.get('recommendations', [])
+            if recs:
+                lines.append('')
+                lines.append('### Recommendations')
+                lines.append('')
+                for i, rec in enumerate(recs, 1):
+                    lines.append(f'{i}. {rec}')
+
+        lines.append('')
+        lines.append('---')
+        lines.append('*Generated by [GEO Optimizer](https://github.com/skywalkerqqq/geo-optimizer-skill)*')
+        lines.append('')
+
+        with open(summary_path, 'a') as out:
+            out.write('\n'.join(lines))
+        "
+
+    - name: Generate CI report (SARIF/JUnit)
+      if: inputs.format != ''
+      shell: bash
+      env:
+        GEO_URL: ${{ inputs.url }}
+        GEO_FORMAT: ${{ inputs.format }}
+      run: |
+        if [ "$GEO_FORMAT" = "sarif" ]; then
+          geo audit --url "$GEO_URL" --format sarif --output geo-audit.sarif.json
+          echo "Generated SARIF report: geo-audit.sarif.json"
+        elif [ "$GEO_FORMAT" = "junit" ]; then
+          geo audit --url "$GEO_URL" --format junit --output geo-audit-junit.xml
+          echo "Generated JUnit report: geo-audit-junit.xml"
+        fi
+
+    - name: Upload SARIF to GitHub Code Scanning
+      if: inputs.format == 'sarif'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: geo-audit.sarif.json
+      continue-on-error: true
+
+    - name: Check minimum score
+      shell: bash
+      env:
+        GEO_SCORE: ${{ steps.audit.outputs.score }}
+        GEO_MIN_SCORE: ${{ inputs.min-score }}
+      run: |
+        SCORE="$GEO_SCORE"
+        MIN_SCORE="$GEO_MIN_SCORE"
+
+        if [ "$MIN_SCORE" -gt 0 ] 2>/dev/null; then
+          if [ "$SCORE" -lt "$MIN_SCORE" ] 2>/dev/null; then
+            echo "::error::GEO Score $SCORE is below minimum threshold $MIN_SCORE"
+            exit 1
+          else
+            echo "::notice::GEO Score $SCORE meets minimum threshold $MIN_SCORE ✅"
+          fi
+        fi

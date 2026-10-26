@@ -1,0 +1,79 @@
+schema_version: 1
+id: geo_ai_discovery_readiness
+name: GEO AI Discovery Readiness
+version: 1.0.0
+kind: analysis
+summary: >
+  Evaluate whether a site is realistically ready from an AI discovery
+  perspective by interpreting bot access, AI discovery endpoints, and related
+  GEO discovery evidence.
+when_to_use:
+  - You already have GEO audit evidence and need a narrower judgment about AI-facing discoverability.
+  - You need to identify which bot-access or AI discovery weaknesses most reduce reliable AI discovery.
+required_inputs:
+  - target_url
+  - audit_evidence_input
+expected_outputs:
+  - ai_discovery_readiness_summary
+  - prioritized_ai_discovery_gaps
+  - ai_discovery_signal_strengths
+  - ai_discovery_improvement_priorities
+  - next_step_recommendation
+engine_surfaces:
+  - python_api:audit
+  - python_api:AuditResult
+  - mcp:geo_audit
+  - mcp:geo_ai_discovery
+  - mcp:geo_check_bots
+  - doc:docs/geo-audit.md
+  - doc:docs/ai-bots-reference.md
+  - doc:docs/scoring-rubric.md
+  - doc:docs/mcp-server.md
+workflow:
+  - id: anchor_on_discovery_evidence
+    title: Anchor on discovery evidence
+    goal: Start from authoritative GEO audit evidence so the AI discovery judgment is grounded in current crawlability and discovery findings rather than generic crawler advice.
+    uses:
+      - python_api:audit
+      - python_api:AuditResult
+      - mcp:geo_audit
+      - doc:docs/geo-audit.md
+    outputs:
+      - normalized_ai_discovery_evidence
+  - id: assess_ai_bot_access
+    title: Assess AI bot access
+    goal: Evaluate whether citation-critical and other tracked AI bots can reliably access the site via robots.txt.
+    uses:
+      - mcp:geo_check_bots
+      - doc:docs/ai-bots-reference.md
+      - doc:docs/scoring-rubric.md
+    outputs:
+      - ai_bot_access_findings
+      - prioritized_ai_discovery_gaps
+  - id: assess_discovery_endpoints
+    title: Assess discovery endpoints
+    goal: Evaluate whether the site's AI discovery endpoints are present, usable, and sufficiently complete for AI-facing discovery workflows.
+    uses:
+      - mcp:geo_ai_discovery
+      - doc:docs/mcp-server.md
+      - doc:docs/scoring-rubric.md
+    outputs:
+      - ai_discovery_signal_strengths
+      - discovery_endpoint_findings
+  - id: produce_ai_discovery_view
+    title: Produce AI discovery view
+    goal: Summarize AI discovery readiness, rank the highest-leverage discovery gaps, and point to the next focused workflow.
+    uses:
+      - doc:docs/geo-audit.md
+      - doc:docs/ai-bots-reference.md
+      - doc:docs/scoring-rubric.md
+    outputs:
+      - ai_discovery_readiness_summary
+      - ai_discovery_improvement_priorities
+      - next_step_recommendation
+guardrails:
+  - Do not turn this into a generic SEO crawlability review or a broad robots.txt troubleshooting guide.
+  - Do not reduce the answer to raw endpoint presence checks without interpreting whether discovery is operationally strong enough for GEO goals.
+  - Do not generate a broad repair workflow; route to foundation repair if the user needs implementation planning.
+  - Keep every claim anchored to existing audit evidence, bot-access checks, discovery endpoint surfaces, or repository docs.
+prompt_file: prompt.md

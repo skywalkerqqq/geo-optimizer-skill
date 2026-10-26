@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% seo %}
+<link rel="canonical" href="{{ page.url | absolute_url }}">
+<link rel="sitemap" type="application/xml" href="{{ '/sitemap.xml' | relative_url }}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+<link rel="alternate" type="application/rss+xml" title="GEO Optimizer Releases" href="https://github.com/skywalkerqqq/geo-optimizer-skill/releases.atom">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══ Design Tokens ═══ */
+:root{
+  --c-bg:#09090b;--c-surface:#18181b;--c-surface2:#27272a;
+  --c-border:#27272a;--c-border-hover:#3f3f46;
+  --c-text:#fafafa;--c-text-2:#a1a1aa;--c-text-3:#71717a;
+  --c-accent:#6366f1;--c-accent2:#818cf8;--c-accent-soft:rgba(99,102,241,.08);
+  --c-green:#22c55e;--c-amber:#f59e0b;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono','Fira Code',monospace;
+  --r:10px;--r-sm:6px;--r-lg:16px;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.03);
+}
+/* ═══ Reset ═══ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);background:var(--c-bg);color:var(--c-text);line-height:1.7;font-size:15px}
+a{color:var(--c-accent2);text-decoration:none;transition:color .15s}
+a:hover{color:var(--c-text)}
+::selection{background:var(--c-accent);color:#fff}
+
+/* ═══ Grain + Gradient ═══ */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.025;
+background:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+body::after{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;pointer-events:none;z-index:0;
+background:radial-gradient(ellipse at 20% 0%,rgba(99,102,241,.06) 0%,transparent 50%),
+radial-gradient(ellipse at 80% 100%,rgba(139,92,246,.04) 0%,transparent 50%)}
+
+/* ═══ Layout Shell ═══ */
+.shell{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ═══ Top Bar ═══ */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(9,9,11,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--c-border)}
+.topbar-inner{max-width:1120px;margin:0 auto;padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-weight:800;font-size:1rem;letter-spacing:-.03em;display:flex;align-items:center;gap:.5rem}
+.logo span{background:linear-gradient(135deg,var(--c-accent),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo .dot{width:7px;height:7px;border-radius:50%;background:var(--c-green);box-shadow:0 0 6px var(--c-green);flex-shrink:0}
+.toplinks{display:flex;align-items:center;gap:1.25rem}
+.toplinks a{color:var(--c-text-3);font-size:.82rem;font-weight:500;transition:color .15s}
+.toplinks a:hover{color:var(--c-text)}
+.toplinks .pip{font-family:var(--mono);font-size:.72rem;color:var(--c-text-3);background:var(--c-surface);
+border:1px solid var(--c-border);padding:.25rem .6rem;border-radius:20px;transition:border-color .2s}
+.toplinks .pip:hover{border-color:var(--c-accent)}
+
+/* ═══ Main Area ═══ */
+.main-area{flex:1;max-width:1120px;margin:0 auto;padding:2rem;width:100%;display:grid;grid-template-columns:220px 1fr;gap:3rem}
+
+/* ═══ Sidebar ═══ */
+.side{position:sticky;top:72px;align-self:start;max-height:calc(100vh - 88px);overflow-y:auto;padding-right:.5rem}
+.side::-webkit-scrollbar{width:3px}
+.side::-webkit-scrollbar-thumb{background:var(--c-border);border-radius:3px}
+.side-group{margin-bottom:1.5rem}
+.side-label{font-size:.68rem;font-weight:600;color:var(--c-text-3);text-transform:uppercase;letter-spacing:.1em;padding:0 .75rem .4rem}
+.side a{display:block;padding:.4rem .75rem;color:var(--c-text-3);font-size:.84rem;font-weight:450;border-radius:var(--r-sm);transition:all .12s;border-left:2px solid transparent;margin-bottom:1px}
+.side a:hover{color:var(--c-text-2);background:var(--c-accent-soft)}
+.side a.active{color:var(--c-accent2);background:var(--c-accent-soft);border-left-color:var(--c-accent)}
+
+/* ═══ Content ═══ */
+.content{min-width:0}
+.content h1{font-size:2.25rem;font-weight:800;letter-spacing:-.04em;line-height:1.15;margin:0 0 .5rem;color:var(--c-text)}
+.content .page-desc{font-size:1.05rem;color:var(--c-text-3);margin-bottom:2rem;line-height:1.6}
+.content h2{font-size:1.35rem;font-weight:700;letter-spacing:-.02em;margin:2.5rem 0 .75rem;color:var(--c-text);padding-bottom:.5rem;border-bottom:1px solid var(--c-border)}
+.content h3{font-size:1.1rem;font-weight:600;margin:2rem 0 .5rem;color:var(--c-text-2)}
+.content h4{font-size:.95rem;font-weight:600;margin:1.5rem 0 .4rem;color:var(--c-text-3)}
+.content p{margin:.75rem 0;color:var(--c-text-2)}
+.content strong{color:var(--c-text);font-weight:600}
+.content hr{border:none;border-top:1px solid var(--c-border);margin:2.5rem 0}
+
+/* Code */
+.content code{font-family:var(--mono);font-size:.84em;background:var(--c-surface);padding:.15rem .4rem;border-radius:var(--r-sm);color:#e4e4e7;border:1px solid var(--c-border)}
+.content pre{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r);padding:1rem 1.25rem;overflow-x:auto;margin:1.25rem 0;box-shadow:var(--shadow)}
+.content pre code{background:none;padding:0;border:none;font-size:.83rem;line-height:1.6}
+
+/* Tables */
+.content table{width:100%;border-collapse:collapse;margin:1.25rem 0;border:1px solid var(--c-border);border-radius:var(--r);overflow:hidden}
+.content th{background:var(--c-surface);padding:.6rem 1rem;text-align:left;font-size:.78rem;font-weight:600;color:var(--c-text-3);text-transform:uppercase;letter-spacing:.04em}
+.content td{padding:.6rem 1rem;border-top:1px solid var(--c-border);font-size:.88rem;color:var(--c-text-2)}
+.content tr:hover td{background:rgba(255,255,255,.02)}
+
+/* Lists */
+.content ul,.content ol{margin:.75rem 0 .75rem 1.25rem;color:var(--c-text-2)}
+.content li{margin:.4rem 0}
+.content li::marker{color:var(--c-text-3)}
+
+/* Blockquote */
+.content blockquote{border-left:3px solid var(--c-accent);padding:.75rem 1.25rem;margin:1.25rem 0;background:var(--c-accent-soft);border-radius:0 var(--r-sm) var(--r-sm) 0;color:var(--c-text-2)}
+
+/* Links in content */
+.content a{color:var(--c-accent2);text-decoration:underline;text-decoration-color:rgba(129,140,248,.3);text-underline-offset:2px;transition:text-decoration-color .15s}
+.content a:hover{text-decoration-color:var(--c-accent2);color:var(--c-text)}
+
+/* Images */
+.content img{max-width:100%;border-radius:var(--r);border:1px solid var(--c-border);margin:1rem 0}
+
+/* ═══ Footer ═══ */
+.site-footer{border-top:1px solid var(--c-border);padding:2rem;text-align:center}
+.site-footer-inner{max-width:1120px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.footer-left{font-size:.78rem;color:var(--c-text-3)}
+.footer-links{display:flex;gap:1.25rem}
+.footer-links a{font-size:.78rem;color:var(--c-text-3)}
+.footer-links a:hover{color:var(--c-text-2)}
+
+/* ═══ Responsive ═══ */
+@media(max-width:768px){
+  .main-area{grid-template-columns:1fr;gap:0;padding:1.25rem}
+  .side{position:static;display:flex;flex-wrap:wrap;gap:.25rem;padding:0 0 1.25rem;border-bottom:1px solid var(--c-border);margin-bottom:1.5rem;max-height:none}
+  .side-group{margin-bottom:.5rem;display:contents}
+  .side-label{display:none}
+  .side a{padding:.3rem .55rem;font-size:.78rem;border-left:none;border-radius:20px}
+  .side a.active{border-left:none}
+  .topbar-inner{padding:0 1.25rem}
+  .content h1{font-size:1.75rem}
+  .site-footer-inner{flex-direction:column;text-align:center}
+}
+</style>
+
+<!-- Schema.org JSON-LD -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","name":"{{ site.title }}","url":"{{ site.url }}{{ site.baseurl }}/","description":"{{ site.description }}","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://skywalkerqqq.github.io/geo-optimizer-skill/?url={search_term_string}"},"query-input":"required name=search_term_string"},"author":{"@type":"Organization","name":"{{ site.author.name }}","url":"{{ site.author.url }}","sameAs":["https://github.com/skywalkerqqq","https://pypi.org/project/geo-optimizer-skill/","https://www.linkedin.com/company/auriti-labs"],"contactPoint":{"@type":"ContactPoint","contactType":"technical support","url":"https://github.com/skywalkerqqq/geo-optimizer-skill/issues"}}}
+</script>
+{% if page.title and page.title != "Documentation" %}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"TechArticle","headline":"{{ page.title }}","description":"{{ page.description | default: site.description }}","url":"{{ page.url | absolute_url }}","author":{"@type":"Organization","name":"{{ site.author.name }}"},"publisher":{"@type":"Organization","name":"{{ site.author.name }}"},"inLanguage":"en","isPartOf":{"@type":"WebSite","name":"{{ site.title }}","url":"{{ site.url }}{{ site.baseurl }}/"}}
+</script>
+{% endif %}
+
+{%- if page.url == "/" -%}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What is GEO Optimizer?","acceptedAnswer":{"@type":"Answer","text":"GEO Optimizer is an open-source Python toolkit that scores websites 0-100 for AI search visibility based on 47 research-backed methods. Install with pip install geo-optimizer-skill."}},
+{"@type":"Question","name":"How is the GEO score calculated?","acceptedAnswer":{"@type":"Answer","text":"The score is calculated across 8 categories: robots.txt (18pt), llms.txt (18pt), JSON-LD schema (16pt), meta tags (14pt), content quality (12pt), signals (6pt), AI discovery (6pt), brand & entity (10pt). Bands: 86-100 excellent, 68-85 good, 36-67 foundation, 0-35 critical."}},
+{"@type":"Question","name":"Is GEO Optimizer free?","acceptedAnswer":{"@type":"Answer","text":"Yes, fully free and open-source under MIT License. No API keys required."}}
+]}
+</script>
+{% endif %}
+</head>
+<body>
+<div class="shell">
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="{{ '/' | relative_url }}" class="logo"><span>GEO Optimizer</span> <span class="dot"></span></a>
+      <div class="toplinks">
+        <a href="{{ '/' | relative_url }}">Docs</a>
+        <a href="https://skywalkerqqq.github.io/geo-optimizer-skill">Demo</a>
+        <a href="https://github.com/{{ site.repository }}">GitHub</a>
+        <a href="https://pypi.org/project/geo-optimizer-skill/" class="pip">pip install geo-optimizer-skill</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <div class="main-area">
+    <nav class="side">
+      <div class="side-group">
+        <div class="side-label">Start</div>
+        <a href="{{ '/getting-started/' | relative_url }}" {% if page.url contains 'getting-started' %}class="active"{% endif %}>Getting Started</a>
+        <a href="{{ '/scoring-rubric/' | relative_url }}" {% if page.url contains 'scoring-rubric' %}class="active"{% endif %}>Scoring Rubric</a>
+      </div>
+      <div class="side-group">
+        <div class="side-label">Commands</div>
+        <a href="{{ '/geo-audit/' | relative_url }}" {% if page.url contains 'geo-audit' %}class="active"{% endif %}>geo audit</a>
+        <a href="{{ '/geo-fix/' | relative_url }}" {% if page.url contains 'geo-fix' %}class="active"{% endif %}>geo fix</a>
+        <a href="{{ '/llms-txt/' | relative_url }}" {% if page.url contains 'llms-txt' %}class="active"{% endif %}>geo llms</a>
+        <a href="{{ '/schema-injector/' | relative_url }}" {% if page.url contains 'schema-injector' %}class="active"{% endif %}>geo schema</a>
+      </div>
+      <div class="side-group">
+        <div class="side-label">Integrate</div>
+        <a href="{{ '/mcp-server/' | relative_url }}" {% if page.url contains 'mcp-server' %}class="active"{% endif %}>MCP Server</a>
+        <a href="{{ '/ci-cd/' | relative_url }}" {% if page.url contains 'ci-cd' %}class="active"{% endif %}>CI/CD</a>
+        <a href="{{ '/ai-context/' | relative_url }}" {% if page.url contains 'ai-context' %}class="active"{% endif %}>AI Context</a>
+      </div>
+      <div class="side-group">
+        <div class="side-label">Reference</div>
+        <a href="{{ '/ai-bots-reference/' | relative_url }}" {% if page.url contains 'ai-bots' %}class="active"{% endif %}>AI Bots</a>
+        <a href="{{ '/geo-methods/' | relative_url }}" {% if page.url contains 'geo-methods' %}class="active"{% endif %}>42 Methods</a>
+        <a href="{{ '/troubleshooting/' | relative_url }}" {% if page.url contains 'troubleshooting' %}class="active"{% endif %}>Troubleshooting</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      {{ content }}
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="site-footer-inner">
+      <div class="footer-left">{{ site.title }} &mdash; MIT License &mdash; Built by <a href="{{ site.author.url }}">{{ site.author.name }}</a></div>
+      <div class="footer-links">
+        <a href="https://github.com/{{ site.repository }}">GitHub</a>
+        <a href="https://pypi.org/project/geo-optimizer-skill/">PyPI</a>
+        <a href="https://github.com/skywalkerqqq">About skywalkerqqq</a>
+        <a href="https://github.com/{{ site.repository }}/blob/main/site/{{ page.path }}">Edit page</a>
+      </div>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

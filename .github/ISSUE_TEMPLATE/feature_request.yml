@@ -1,0 +1,70 @@
+name: ✨ Feature Request
+description: Suggest a new feature or improvement
+title: "[FEAT] "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to improve GEO Optimizer? We'd love to hear it.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem does this solve? What are you trying to do?
+      placeholder: "I need to... but currently..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would the feature work? CLI example, API shape, etc.
+      placeholder: |
+        ```bash
+        geo audit --url https://example.com --new-flag
+        ```
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the tool does this affect?
+      options:
+        - Audit checks (new or improved)
+        - CLI / output formats
+        - Fix generation (geo fix)
+        - llms.txt (geo llms)
+        - Schema / JSON-LD (geo schema)
+        - MCP Server
+        - Web demo
+        - Plugin system
+        - Documentation
+        - CI/CD integration
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: research
+    attributes:
+      label: Research reference (optional)
+      description: |
+        Does this relate to a published paper or spec?
+        E.g., Princeton KDD 2024, AutoGEO ICLR 2026, llmstxt.org, geo-checklist.dev
+      placeholder: "Based on AutoGEO (Wu et al., ICLR 2026) which found that..."
+
+  - type: dropdown
+    id: willing-to-implement
+    attributes:
+      label: Would you be willing to implement this?
+      options:
+        - "Yes, I'd like to submit a PR"
+        - "I can help but need guidance"
+        - "No, just suggesting"
+    validations:
+      required: true

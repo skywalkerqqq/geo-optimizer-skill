@@ -1,0 +1,26 @@
+# Render Blueprint — configurazione dichiarativa per deploy automatico
+# NOTA: deploy principale su server dedicato OVH. Render e' un'alternativa.
+# Docs: https://docs.render.com/blueprint-spec
+#
+# Per collegare: Dashboard → New → Blueprint → seleziona repo GitHub
+# Render legge questo file e crea i servizi automaticamente.
+
+services:
+  - type: web
+    name: geo-optimizer-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile.web
+    plan: free
+    region: frankfurt  # EU — più vicino a noi
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: PYTHONDONTWRITEBYTECODE
+        value: "1"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: GEO_STATS_API_URL
+        value: "https://agencypilot.it/api/geo-stats"
+      - key: GEO_STATS_API_KEY
+        sync: false  # da impostare manualmente nella dashboard Render

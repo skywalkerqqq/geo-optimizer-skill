@@ -1,0 +1,66 @@
+title: GEO Optimizer
+description: "Make websites visible to AI search engines. Audit, fix, and optimize for ChatGPT, Perplexity, Claude, and Gemini."
+url: "https://skywalkerqqq.github.io"
+baseurl: "/geo-optimizer-skill"
+lang: en
+
+author:
+  name: "skywalkerqqq"
+  url: "https://github.com/skywalkerqqq"
+
+repository: skywalkerqqq/geo-optimizer-skill
+
+# SEO
+twitter:
+  card: summary_large_image
+social:
+  name: skywalkerqqq
+  links:
+    - https://github.com/skywalkerqqq
+    - https://pypi.org/project/geo-optimizer-skill/
+
+# Build
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Navigation order
+nav_pages:
+  - title: Getting Started
+    url: /getting-started/
+  - title: GEO Audit
+    url: /geo-audit/
+  - title: GEO Fix
+    url: /geo-fix/
+  - title: llms.txt Generator
+    url: /llms-txt/
+  - title: Schema Injector
+    url: /schema-injector/
+  - title: MCP Server
+    url: /mcp-server/
+  - title: CI/CD Integration
+    url: /ci-cd/
+  - title: AI Bots Reference
+    url: /ai-bots-reference/
+  - title: GEO Methods
+    url: /geo-methods/
+  - title: Scoring Rubric
+    url: /scoring-rubric/
+  - title: AI Context Files
+    url: /ai-context/
+  - title: Troubleshooting
+    url: /troubleshooting/
+
+include:
+  - ".well-known"
+  - "ai"
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md

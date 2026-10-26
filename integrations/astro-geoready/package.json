@@ -1,0 +1,46 @@
+{
+  "name": "astro-geoready",
+  "version": "0.1.0",
+  "description": "Make your Astro site GEO-ready at build time: generates llms.txt and AI discovery files (ai.txt, ai/summary.json) from your built routes.",
+  "type": "module",
+  "main": "./index.mjs",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "keywords": [
+    "astro",
+    "astro-integration",
+    "astro-component",
+    "withastro",
+    "geo",
+    "generative-engine-optimization",
+    "llms.txt",
+    "ai-seo",
+    "seo",
+    "ai-visibility"
+  ],
+  "author": "skywalkerqqq",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skywalkerqqq/geo-optimizer-skill.git",
+    "directory": "integrations/astro-geoready"
+  },
+  "homepage": "https://geoready.dev",
+  "bugs": {
+    "url": "https://github.com/skywalkerqqq/geo-optimizer-skill/issues"
+  },
+  "peerDependencies": {
+    "astro": ">=4.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

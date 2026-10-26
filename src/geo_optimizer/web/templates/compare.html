@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html __GEO_HTML_LANG_ATTR__>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__I18N_TITLE__</title>
+<meta name="description" content="__I18N_META_DESC__">
+<link rel="canonical" href="https://skywalkerqqq.github.io/geo-optimizer-skill/compare">
+<meta property="og:type" content="website">
+<meta property="og:title" content="__I18N_OG_TITLE__">
+<meta property="og:description" content="__I18N_OG_DESC__">
+<meta property="og:url" content="https://skywalkerqqq.github.io/geo-optimizer-skill/compare">
+<meta property="og:image" content="https://skywalkerqqq.github.io/geo-optimizer-skill/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="GEO Optimizer">
+<meta property="og:locale" content="__I18N_OG_LOCALE__">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#06080f;--bg-card:#0d1117;--border:#1b2332;--border-hover:#2d3a4f;
+--text:#e2e8f0;--text-dim:#64748b;--text-muted:#475569;--accent:#3b82f6;--accent2:#8b5cf6;
+--green:#22c55e;--cyan:#06b6d4;--yellow:#eab308;--red:#ef4444;
+--radius:12px;--radius-sm:8px;--font:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.03;
+background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+a{color:var(--accent);text-decoration:none}
+.wrapper{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:2rem 1.5rem}
+/* ─── Professional Nav ─── */
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;margin-bottom:2.5rem;background:rgba(6,8,15,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);border-radius:0 0 var(--radius-sm) var(--radius-sm)}
+.nav-logo{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:.95rem;color:var(--text);white-space:nowrap;text-decoration:none}
+.nav-logo .dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 6px var(--green)}
+.nav-logo .ver{font-family:var(--mono);font-size:.65rem;color:var(--accent);background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);padding:.1rem .4rem;border-radius:20px;margin-left:.25rem}
+.nav-links{display:flex;align-items:center;gap:1.75rem}
+.nav-links a{color:var(--text-dim);font-size:.82rem;font-weight:500;letter-spacing:.02em;transition:color .2s;white-space:nowrap;text-decoration:none}
+.nav-links a:hover,.nav-links a.active{color:var(--text)}
+.nav-sep{width:1px;height:16px;background:var(--border);flex-shrink:0}
+.nav-dropdown{position:relative}
+.nav-dropdown-toggle{display:flex;align-items:center;gap:.3rem;color:var(--text-dim);font-size:.82rem;font-weight:500;letter-spacing:.02em;cursor:pointer;transition:color .2s;white-space:nowrap;background:none;border:none;font-family:inherit;padding:0}
+.nav-dropdown-toggle:hover,.nav-dropdown.open .nav-dropdown-toggle{color:var(--text)}
+.nav-dropdown-toggle svg{width:10px;height:10px;fill:currentColor;transition:transform .2s}
+.nav-dropdown.open .nav-dropdown-toggle svg{transform:rotate(180deg)}
+.nav-dropdown-menu{display:none;position:absolute;top:calc(100% + .75rem);right:0;min-width:160px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.35rem;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.nav-dropdown.open .nav-dropdown-menu{display:block}
+.nav-dropdown-menu a{display:block;padding:.5rem .75rem;color:var(--text-dim);font-size:.82rem;font-weight:500;border-radius:6px;transition:all .15s;text-decoration:none}
+.nav-dropdown-menu a:hover{color:var(--text);background:var(--bg-card-hover)}
+.nav-dropdown-menu a.active{color:var(--text)}
+.nav-cta{display:flex;align-items:center;gap:.4rem;color:var(--text-dim);font-size:.82rem;font-weight:500;border:1px solid var(--border);padding:.35rem .75rem;border-radius:20px;transition:all .2s;white-space:nowrap;text-decoration:none}
+.nav-cta:hover{color:var(--text);border-color:var(--border-hover)}
+.nav-cta svg{width:14px;height:14px;fill:currentColor;flex-shrink:0}
+.nav-cta .star-count{font-family:var(--mono);font-size:.75rem}
+.nav-hamburger{display:none;background:none;border:1px solid var(--border);color:var(--text-dim);padding:.3rem .5rem;border-radius:6px;cursor:pointer;font-size:1.1rem;line-height:1;transition:all .2s}
+.nav-hamburger:hover{border-color:var(--border-hover);color:var(--text)}
+@media(max-width:768px){
+  nav{flex-wrap:wrap;gap:.5rem;padding:.6rem .75rem}
+  .nav-links{display:none;width:100%;flex-direction:column;gap:0;border-top:1px solid var(--border);padding-top:.5rem;margin-top:.25rem}
+  .nav-links.open{display:flex}
+  .nav-links a{padding:.55rem .25rem;border-bottom:1px solid var(--border);font-size:.9rem}
+  .nav-links a:last-child{border-bottom:none}
+  .nav-sep{display:none}
+  .nav-dropdown{width:100%}
+  .nav-dropdown-toggle{padding:.55rem .25rem;border-bottom:1px solid var(--border);font-size:.9rem;width:100%}
+  .nav-dropdown-menu{position:static;border:none;box-shadow:none;background:transparent;padding:0 0 0 1rem;display:none}
+  .nav-dropdown.open .nav-dropdown-menu{display:block}
+  .nav-dropdown-menu a{padding:.45rem .25rem;border-bottom:1px solid var(--border);border-radius:0}
+  .nav-hamburger{display:block}
+  .nav-logo .ver{display:none}
+  .nav-cta .star-count{display:none}
+}
+@media(max-width:480px){
+  .nav-cta span:not(.star-count){font-size:.8rem}
+}
+.hero{text-align:center;margin-bottom:2rem}
+.hero h1{font-size:2.4rem;font-weight:700;letter-spacing:-.03em;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:var(--text-dim);margin-top:.4rem}
+.form-wrap{margin-bottom:1.5rem}
+.form-wrap input{width:100%;padding:.8rem 1rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text);font-family:var(--font);font-size:.95rem;outline:none;transition:border-color .2s}
+.form-wrap input:focus{border-color:var(--accent)}
+.vs{text-align:center;color:var(--text-muted);font-size:.8rem;padding:.4rem 0;letter-spacing:.1em}
+.btn{display:block;width:100%;padding:.8rem;border:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:var(--font);font-size:1rem;font-weight:600;cursor:pointer;margin-top:.75rem;transition:opacity .2s}
+.btn:hover{opacity:.9}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.spinner{display:none;text-align:center;padding:1.5rem 0;color:var(--text-dim);font-size:.85rem}
+.spinner.active{display:block}
+.error{display:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius-sm);padding:.75rem 1rem;color:var(--red);font-size:.9rem;margin-bottom:1rem}
+.results{display:none;margin-top:1.5rem}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;text-align:center;transition:border-color .3s}
+.card.winner{border-color:var(--green);box-shadow:0 0 20px rgba(34,197,94,.08)}
+.card-url{font-size:.75rem;color:var(--text-muted);word-break:break-all;margin-bottom:.75rem;font-family:var(--mono)}
+.card-score{font-family:var(--mono);font-size:2.5rem;font-weight:700}
+.card-band{font-size:.8rem;font-weight:600;letter-spacing:.05em;margin-top:.25rem;text-transform:uppercase}
+.bars{margin-top:1rem}
+.bar-row{display:flex;align-items:center;gap:.4rem;padding:.3rem 0;font-size:.75rem}
+.bar-lbl{width:65px;text-align:right;color:var(--text-dim);flex-shrink:0}
+.bar-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.bar-val{width:24px;font-family:var(--mono);color:var(--text-dim);font-size:.7rem}
+footer{text-align:center;padding:2rem 0 1rem;border-top:1px solid var(--border);margin-top:2rem;color:var(--text-muted);font-size:.8rem}
+footer a{color:var(--text-muted)}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.wrapper{padding:1.25rem 1rem}.hero h1{font-size:1.8rem}}
+
+/* ─── Floating cookie settings button ─── */
+.cookie-float-btn {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  z-index: 9990;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(13, 17, 23, 0.9);
+  border: 1px solid #1b2332;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  color: #64748b;
+  transition: color 0.2s, border-color 0.2s;
+}
+.cookie-float-btn:hover { color: #e2e8f0; border-color: #3b82f6; }
+.cookie-float-btn svg { width: 20px; height: 20px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav>
+    <div class="nav-logo">
+      <span class="dot"></span>
+      <span>GEO Optimizer</span>
+      <span class="ver" id="nav-ver">v4.0.0</span>
+    </div>
+    <button class="nav-hamburger" id="nav-ham" aria-label="__I18N_ARIA_MENU__">&#9776;</button>
+    <div class="nav-links">
+      <a href="/">__I18N_NAV_AUDIT__</a>
+      <a href="/compare" class="active">__I18N_NAV_COMPARE__</a>
+      <a href="https://auriti-labs.github.io/geo-optimizer-skill/">__I18N_NAV_DOCS__</a>
+      <span class="nav-sep"></span>
+      <div class="nav-dropdown">
+        <button class="nav-dropdown-toggle" aria-expanded="false">__I18N_NAV_MORE__ <svg viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="nav-dropdown-menu">
+          <a href="/research">__I18N_NAV_RESEARCH__</a>
+          <a href="/roadmap">__I18N_NAV_ROADMAP__</a>
+          <a href="/manifesto">__I18N_NAV_MANIFESTO__</a>
+        </div>
+      </div>
+    </div>
+    <a class="nav-cta" href="https://github.com/skywalkerqqq/geo-optimizer-skill" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" fill="currentColor"/></svg>
+      __I18N_NAV_GITHUB__
+      <span class="star-count" id="nav-stars"></span>
+    </a>
+  </nav>
+  <div class="hero"><h1>__I18N_HERO_H1__</h1><p>__I18N_HERO_P__</p></div>
+  <div class="form-wrap">
+    <input type="url" id="url1" placeholder="https://site-a.com" required aria-label="__I18N_FORM_ARIA_URL1__">
+    <div class="vs">__I18N_FORM_VS__</div>
+    <input type="url" id="url2" placeholder="https://site-b.com" required aria-label="__I18N_FORM_ARIA_URL2__">
+    <button class="btn" id="btn">__I18N_BTN_COMPARE__</button>
+  </div>
+  <div class="spinner" id="spinner">__I18N_SPIN_MSG__</div>
+  <div class="error" id="error"></div>
+  <div class="results" id="results"><div class="grid" id="grid"></div></div>
+  <footer>
+    <a href="https://github.com/skywalkerqqq/geo-optimizer-skill">GitHub</a> &middot;
+    <a href="https://auriti-labs.github.io/geo-optimizer-skill/">Docs</a> &middot;
+    <a href="https://pypi.org/project/geo-optimizer-skill/">PyPI</a>
+  </footer>
+</div>
+<script__NONCE_ATTR__>
+fetch('/api/stats').then(function(r){return r.json()}).then(function(d){var ns=document.getElementById('nav-stars');if(ns&&d.github_stars)ns.textContent='★ '+d.github_stars}).catch(function(){});
+const BANDS={excellent:'#22c55e',good:'#06b6d4',foundation:'#eab308',critical:'#ef4444'};
+const CATS=[{k:'robots',l:'Robots',m:18},{k:'llms',l:'llms.txt',m:18},{k:'schema',l:'Schema',m:16},{k:'meta',l:'Meta',m:14},{k:'content',l:'Content',m:12},{k:'signals',l:'Signals',m:6},{k:'ai_discovery',l:'AI Disc.',m:6},{k:'brand_entity',l:'Brand',m:10}];
+const $=id=>document.getElementById(id);
+
+$('btn').addEventListener('click',run);
+$('url2').addEventListener('keypress',e=>{if(e.key==='Enter')run()});
+
+function isValidUrl(str){
+  if(/^https?:\/\/.+\..+/.test(str))return true;
+  if(/^[^\s]+\.[a-z]{2,}(\/.*)?$/i.test(str))return true;
+  return false;
+}
+
+async function run(){
+  let u1=$('url1').value.trim(),u2=$('url2').value.trim();
+  if(!u1||!u2)return;
+  if(!isValidUrl(u1)){$('error').textContent='Site A: please enter a valid URL';$('error').style.display='block';return}
+  if(!isValidUrl(u2)){$('error').textContent='Site B: please enter a valid URL';$('error').style.display='block';return}
+  if(!/^https?:\/\//i.test(u1))u1='https://'+u1;$('url1').value=u1;
+  if(!/^https?:\/\//i.test(u2))u2='https://'+u2;$('url2').value=u2;
+  $('btn').disabled=true;$('spinner').classList.add('active');$('error').style.display='none';$('results').style.display='none';
+  try{
+    const [s1,s2]=await Promise.allSettled([fetch('/api/audit?url='+encodeURIComponent(u1)),fetch('/api/audit?url='+encodeURIComponent(u2))]);
+    const errs=[];
+    let d1=null,d2=null;
+    if(s1.status==='fulfilled'&&s1.value.ok){d1=await s1.value.json()}else{errs.push('Site A: '+(s1.reason?.message||'Error'))}
+    if(s2.status==='fulfilled'&&s2.value.ok){d2=await s2.value.json()}else{errs.push('Site B: '+(s2.reason?.message||'Error'))}
+    if(!d1&&!d2)throw new Error(errs.join('; '));
+    if(d1&&d2){render(d1,d2);$('results').style.display='block'}
+    else{if(d1||d2){render(d1||{score:0,band:'critical',url:u1},d2||{score:0,band:'critical',url:u2});$('results').style.display='block'}if(errs.length){$('error').textContent=errs.join('; ');$('error').style.display='block'}}
+  }catch(e){$('error').textContent=e.message;$('error').style.display='block'}
+  finally{$('btn').disabled=false;$('spinner').classList.remove('active')}
+}
+
+function render(a,b){
+  const g=$('grid');g.textContent='';
+  [a,b].forEach((d,i)=>{
+    const win=(i===0?a.score>b.score:b.score>a.score);
+    const c=document.createElement('div');c.className='card'+(win?' winner':'');
+    const color=BANDS[d.band]||'#888';
+    const url=document.createElement('div');url.className='card-url';url.textContent=d.url||(i===0?$('url1').value:$('url2').value);c.appendChild(url);
+    const sc=document.createElement('div');sc.className='card-score';sc.style.color=color;sc.textContent=d.score+'/100';c.appendChild(sc);
+    const bd=document.createElement('div');bd.className='card-band';bd.style.color=color;bd.textContent=(d.band||'').toUpperCase();c.appendChild(bd);
+    const bars=document.createElement('div');bars.className='bars';
+    const br=d.score_breakdown||{};
+    for(const cat of CATS){
+      const v=br[cat.k]||0;const pct=Math.min(v/cat.m*100,100);
+      const row=document.createElement('div');row.className='bar-row';
+      const lbl=document.createElement('span');lbl.className='bar-lbl';lbl.textContent=cat.l;
+      const track=document.createElement('div');track.className='bar-track';
+      const fill=document.createElement('div');fill.className='bar-fill';fill.style.width='0%';fill.style.background=color;
+      track.appendChild(fill);
+      const val=document.createElement('span');val.className='bar-val';val.textContent=v;
+      row.appendChild(lbl);row.appendChild(track);row.appendChild(val);bars.appendChild(row);
+      requestAnimationFrame(()=>{requestAnimationFrame(()=>{fill.style.width=pct+'%'})});
+    }
+    c.appendChild(bars);g.appendChild(c);
+  });
+}
+document.getElementById('nav-ham').addEventListener('click',function(){
+  document.querySelector('.nav-links').classList.toggle('open');
+  this.textContent=this.textContent==='☰'?'✕':'☰';
+});
+document.querySelectorAll('.nav-dropdown-toggle').forEach(function(btn){
+  btn.addEventListener('click',function(e){
+    e.stopPropagation();
+    var dd=this.closest('.nav-dropdown');
+    dd.classList.toggle('open');
+    this.setAttribute('aria-expanded',dd.classList.contains('open'));
+  });
+});
+document.addEventListener('click',function(){
+  document.querySelectorAll('.nav-dropdown.open').forEach(function(dd){
+    dd.classList.remove('open');
+    dd.querySelector('.nav-dropdown-toggle').setAttribute('aria-expanded','false');
+  });
+});
+</script>
+
+<!-- Floating cookie settings button: link alle impostazioni cookie -->
+<a href="/privacy#cookies" class="cookie-float-btn" title="__I18N_TITLE_COOKIE__" aria-label="__I18N_ARIA_COOKIE__">
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+    <circle cx="8" cy="9" r="1.5" fill="currentColor"/>
+    <circle cx="15" cy="8" r="1" fill="currentColor"/>
+    <circle cx="14" cy="14" r="1.5" fill="currentColor"/>
+    <circle cx="9" cy="15" r="1" fill="currentColor"/>
+    <circle cx="17" cy="13" r="1" fill="currentColor"/>
+  </svg>
+</a>
+
+</body>
+</html>

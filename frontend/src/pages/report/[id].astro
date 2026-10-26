@@ -1,0 +1,90 @@
+---
+import Shell from '../../components/Shell.astro';
+import AuditReportContainer from '../../components/report/AuditReportContainer';
+
+export function getStaticPaths() {
+  return [
+    { params: { id: 'demo' } },
+    { params: { id: '100680ad546ce6a577f42f52df33b4cf' } },
+  ];
+}
+
+const { id } = Astro.params;
+const decodedId = id ? decodeURIComponent(id) : 'demo';
+
+const isDemo = decodedId === 'demo';
+const title = isDemo
+  ? 'GeoReady Audit Report Demo'
+  : 'GeoReady Audit Report';
+const description = isDemo
+  ? 'Preview a sample GeoReady audit report with GEO scores, citability ratings, technical signals, and actionable AI search visibility recommendations.'
+  : 'View your GeoReady audit report with GEO scores, citability ratings, technical signals, and actionable AI search visibility recommendations.';
+// Public demo report is a marketing page (static mock data, no user data) and
+// should be indexable. Live token reports stay out of the index.
+const canonical = isDemo
+  ? 'https://geoready.dev/report/demo/'
+  : `https://geoready.dev/report/${decodedId}`;
+const robots = isDemo ? 'index, follow' : 'noindex, nofollow';
+---
+
+<Shell title={title} description={description} canonical={canonical} robots={robots}>
+  <header class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 md:pt-16 pb-6">
+    <div class="flex items-center gap-2 text-[10px] font-mono text-text-muted uppercase tracking-wider">
+      <span>GeoReady</span>
+      <span class="w-1 h-1 rounded-full bg-text-muted" />
+      <span>{isDemo ? 'Demo Report' : 'Audit Report'}</span>
+    </div>
+
+    <h1 class="mt-3 font-display text-3xl md:text-4xl font-bold text-text-primary leading-tight tracking-tight">
+      {isDemo ? 'GEO Audit Report Demo' : 'GEO Audit Report'}
+    </h1>
+
+    <p class="mt-4 text-base text-text-secondary leading-relaxed max-w-2xl">
+      {isDemo
+        ? 'This is a preview of a GeoReady audit report. The demo shows how a complete report looks when you run an audit on a live website.'
+        : 'Live audit results for the submitted URL. This report is generated on demand and is not indexed by search engines.'}
+    </p>
+
+    {isDemo && (
+      <p class="mt-2 text-xs text-text-muted font-mono">Demo snapshot: May 2026</p>
+    )}
+  </header>
+
+  {isDemo && (
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 pb-6 max-w-2xl">
+      <h2 class="text-sm font-mono font-semibold uppercase tracking-wider text-text-muted mb-3">
+        What this demo report shows
+      </h2>
+      <ul class="space-y-2">
+        <li class="text-sm text-text-secondary flex items-start gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent-teal mt-1.5 shrink-0" aria-hidden="true" />
+          GEO Score across 8 signal categories
+        </li>
+        <li class="text-sm text-text-secondary flex items-start gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent-teal mt-1.5 shrink-0" aria-hidden="true" />
+          Citability Score (47-method suite)
+        </li>
+        <li class="text-sm text-text-secondary flex items-start gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent-teal mt-1.5 shrink-0" aria-hidden="true" />
+          Category breakdown with actionable recommendations
+        </li>
+        <li class="text-sm text-text-secondary flex items-start gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent-teal mt-1.5 shrink-0" aria-hidden="true" />
+          Technical signal readiness (pass / warn / fail)
+        </li>
+        <li class="text-sm text-text-secondary flex items-start gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent-teal mt-1.5 shrink-0" aria-hidden="true" />
+          Prioritized recommendations and export actions
+        </li>
+      </ul>
+    </section>
+  )}
+
+  {/* min-h-svh reserves a viewport of space for the report island: the
+      sections below start under the fold at first paint, so the async
+      report growth (loading strip → full height) cannot shift any
+      viewport-visible content. */}
+  <div class="min-h-svh">
+    <AuditReportContainer client:load reportId={decodedId} />
+  </div>
+</Shell>

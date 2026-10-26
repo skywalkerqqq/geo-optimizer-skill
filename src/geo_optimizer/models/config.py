@@ -1,0 +1,774 @@
+"""
+Centralized configuration for GEO Optimizer.
+
+All shared constants (bots, schemas, scoring weights, patterns) live here
+so that core modules, CLI, and tests can import from a single source.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+# ─── HTTP ────────────────────────────────────────────────────────────────────
+
+USER_AGENT = "GEO-Optimizer/2.0 (https://github.com/skywalkerqqq/geo-optimizer-skill)"
+
+HEADERS = {"User-Agent": USER_AGENT}
+
+# Process-wide User-Agent override for the generic fetch layer (#528). Resolved
+# once at CLI startup from --user-agent / GEO_USER_AGENT and read by
+# utils/http.py, utils/http_async.py and llms_generator.py via get_headers().
+# Deliberately does NOT affect AI_BOTS / CITATION_BOTS-based checks (e.g. the
+# CDN AI-crawler probe, #225): those send a specific bot identity on purpose,
+# and overriding it would defeat the test.
+_user_agent_override: str | None = None
+
+
+def set_user_agent_override(user_agent: str | None) -> None:
+    """Set (or clear, with None) the process-wide User-Agent override."""
+    global _user_agent_override
+    _user_agent_override = user_agent.strip() if user_agent and user_agent.strip() else None
+
+
+def resolve_user_agent_override(cli_value: str | None) -> str | None:
+    """Resolve a User-Agent override from a CLI flag or the GEO_USER_AGENT env var.
+
+    The CLI flag takes precedence. Returns None if neither is set, meaning the
+    default USER_AGENT applies.
+    """
+    if cli_value and cli_value.strip():
+        return cli_value.strip()
+    env_value = os.environ.get("GEO_USER_AGENT", "").strip()
+    return env_value or None
+
+
+def get_headers() -> dict:
+    """Return the current fetch headers, honoring any active User-Agent override."""
+    if _user_agent_override:
+        return {"User-Agent": _user_agent_override}
+    return dict(HEADERS)
+
+
+# HTTP response size limit: 10 MB (prevents DoS from huge responses) — fix #91
+MAX_RESPONSE_SIZE: int = 10 * 1024 * 1024
+
+# Maximum number of sub-sitemaps to process in a sitemap index — fix #90
+MAX_SUB_SITEMAPS: int = 10
+
+# Total URL limit extracted from all sitemaps — fix #124 (sitemap bomb)
+MAX_TOTAL_URLS: int = 10_000
+
+# ─── Local history / tracking ────────────────────────────────────────────────
+
+# Performance budget: warn if a single-page audit exceeds this threshold (#290)
+AUDIT_TIMEOUT_SECONDS: int = 10
+
+GEO_OPTIMIZER_HOME = Path.home() / ".geo-optimizer"
+TRACKING_DB_PATH = GEO_OPTIMIZER_HOME / "tracking.db"
+SNAPSHOTS_DB_PATH = GEO_OPTIMIZER_HOME / "snapshots.db"
+DEFAULT_HISTORY_RETENTION_DAYS = 90
+DEFAULT_HISTORY_LIMIT = 12
+DEFAULT_SNAPSHOT_LIMIT = 20
+
+# ─── Passive AI visibility monitoring ────────────────────────────────────────
+
+MONITOR_SCORING = {
+    "citation_bot_access": 20,
+    "user_fetch_access": 10,
+    "llms_readiness": 15,
+    "ai_discovery_readiness": 15,
+    "entity_strength": 15,
+    "trust_strength": 15,
+    "momentum": 10,
+}
+
+MONITOR_BANDS = {
+    "strong": (80, 100),
+    "visible": (60, 79),
+    "emerging": (35, 59),
+    "low": (0, 34),
+}
+
+
+# ─── AI bots — 3-tier classification (training/search/user) ──────────────────
+#
+# Training: crawl to train models (less critical for direct visibility)
+# Search:   cite the site in AI responses (highest priority for GEO)
+# User:     on-demand fetch when a user asks about a specific URL
+
+AI_BOTS = {
+    # ── OpenAI ──────────────────────────────────────────────────────────────
+    "GPTBot": "OpenAI (ChatGPT training)",
+    "OAI-SearchBot": "OpenAI (ChatGPT search citations)",
+    "ChatGPT-User": "OpenAI (ChatGPT on-demand fetch)",
+    # ── Anthropic ───────────────────────────────────────────────────────────
+    # anthropic-ai/claude-web removed (#512): not listed in Anthropic's current
+    # published crawler docs (support.claude.com), which name exactly these three.
+    "ClaudeBot": "Anthropic (Claude training)",
+    "Claude-SearchBot": "Anthropic (Claude search citations)",
+    "Claude-User": "Anthropic (Claude on-demand fetch)",
+    # ── Perplexity ──────────────────────────────────────────────────────────
+    "PerplexityBot": "Perplexity AI (index builder)",
+    "Perplexity-User": "Perplexity (citation fetch on-demand)",
+    # ── Google ──────────────────────────────────────────────────────────────
+    # Googlebot (#512): the same crawler that feeds Search also feeds AI
+    # Overviews — Google's own docs state Google-Extended is a robots.txt
+    # token layered on Googlebot's data, not a separate fetching agent, and
+    # controls only Gemini/Vertex training, not AI Overviews eligibility.
+    "Googlebot": "Google (Search + AI Overviews)",
+    "Google-Extended": "Google (Gemini/Vertex training opt-out — not a crawler)",
+    "Google-CloudVertexBot": "Google (Vertex AI)",
+    # ── Microsoft ───────────────────────────────────────────────────────────
+    "Bingbot": "Microsoft (Bing/Copilot search)",
+    # ── Apple ───────────────────────────────────────────────────────────────
+    "Applebot-Extended": "Apple (AI training)",
+    # ── Other ───────────────────────────────────────────────────────────────
+    "cohere-ai": "Cohere (language models)",
+    "DuckAssistBot": "DuckDuckGo AI",
+    "Bytespider": "ByteDance/TikTok AI",
+    "meta-externalagent": "Meta AI (Facebook/Instagram AI)",
+    # ── Meta (expanded) ─────────────────────────────────────────────────────
+    "Meta-ExternalFetcher": "Meta (content fetch on-demand)",
+    "facebookexternalhit": "Meta (social preview + AI)",
+    # ── Amazon ──────────────────────────────────────────────────────────────
+    "Amazonbot": "Amazon (Alexa/search AI)",
+    # ── Allen Institute ─────────────────────────────────────────────────────
+    "AI2Bot": "Allen Institute (AI research)",
+    "AI2Bot-Dolma": "Allen Institute (Dolma dataset)",
+    # ── xAI ────────────────────────────────────────────────────────────────
+    "xAI-Bot": "xAI (Grok search citations)",
+    # ── Apple (general) ────────────────────────────────────────────────────
+    "Applebot": "Apple (general web crawl + Siri AI)",
+    # ── Huawei ─────────────────────────────────────────────────────────────
+    "PetalBot": "Huawei (PetalSearch AI, EU/Asia)",
+    # ── You.com ─────────────────────────────────────────────────────────────
+    "YouBot": "You.com AI search",
+    # ── Common Crawl ────────────────────────────────────────────────────────
+    "CCBot": "Common Crawl (used by many AI labs)",
+}
+
+# 3-tier classification — bots grouped by function
+BOT_TIERS = {
+    "training": {
+        "GPTBot",
+        "ClaudeBot",
+        "Google-Extended",
+        "Google-CloudVertexBot",
+        "Applebot-Extended",
+        "cohere-ai",
+        "Bytespider",
+        "meta-externalagent",
+        "PetalBot",
+        "AI2Bot",
+        "AI2Bot-Dolma",
+        "CCBot",
+    },
+    "search": {
+        "OAI-SearchBot",
+        "Claude-SearchBot",
+        "PerplexityBot",
+        "Googlebot",
+        "Applebot",
+        "Bingbot",
+        "DuckAssistBot",
+        "YouBot",
+        "Amazonbot",
+        "xAI-Bot",
+    },
+    "user": {
+        "ChatGPT-User",
+        "Claude-User",
+        "Perplexity-User",
+        "Meta-ExternalFetcher",
+        "facebookexternalhit",
+    },
+}
+
+# Critical citation bots (search-tier bots that actually drive AI citations —
+# #512: matches the "AI search crawlers" set, not the training-only crawlers
+# that happen to share a vendor. ClaudeBot is training-only per Anthropic's
+# current docs, so it is excluded here even though it is Anthropic's bot).
+CITATION_BOTS = {"OAI-SearchBot", "Claude-SearchBot", "PerplexityBot", "Googlebot", "Applebot"}
+
+# Human-readable bot labels for user-facing recommendation messages
+ROBOTS_KEY_BOTS_DISPLAY: str = "GPTBot, ClaudeBot, PerplexityBot"
+CITATION_BOTS_DISPLAY: str = "OAI-SearchBot, Claude-SearchBot, PerplexityBot, Googlebot, Applebot"
+
+# ─── Brand normalization ──────────────────────────────────────────────────────
+
+# Legal suffixes stripped from brand names before comparison (#397).
+# Only removed when they appear at the END of the name (after stripping punctuation/spaces).
+# Lowercase, matched against the lowercased trailing token(s).
+BRAND_LEGAL_SUFFIXES: frozenset = frozenset(
+    {
+        "inc",
+        "inc.",
+        "incorporated",
+        "ltd",
+        "ltd.",
+        "limited",
+        "llc",
+        "l.l.c.",
+        "corp",
+        "corp.",
+        "corporation",
+        "gmbh",
+        "g.m.b.h.",
+        "s.r.l.",
+        "srl",
+        "s.p.a.",
+        "spa",
+        "s.a.",
+        "sa",
+        "ag",
+        "co",
+        "co.",
+        "plc",
+        "pty",
+        "pty.",
+        "bv",
+        "b.v.",
+        "nv",
+        "n.v.",
+    }
+)
+
+# ─── Schema types ────────────────────────────────────────────────────────────
+
+# All schema.org Article subtypes that count as Article for GEO scoring
+# Includes direct subclasses per schema.org hierarchy (#392)
+ARTICLE_TYPES: frozenset[str] = frozenset(
+    {
+        "Article",
+        "BlogPosting",
+        "NewsArticle",
+        "TechArticle",
+        "ScholarlyArticle",
+    }
+)
+
+VALUABLE_SCHEMAS = [
+    "WebSite",
+    "WebApplication",
+    "FAQPage",
+    "Article",
+    "BlogPosting",
+    "NewsArticle",
+    "TechArticle",
+    "ScholarlyArticle",
+    "HowTo",
+    "Recipe",
+    "Product",
+    "Organization",
+    "Person",
+    "BreadcrumbList",
+]
+
+# Required fields for each schema.org type (keys are lowercase)
+SCHEMA_ORG_REQUIRED = {
+    "website": ["@context", "@type", "url", "name"],
+    "webpage": ["@context", "@type", "url", "name"],
+    "organization": ["@context", "@type", "name", "url"],
+    "person": ["@context", "@type", "name"],
+    "faqpage": ["@context", "@type", "mainEntity"],
+    "article": ["@context", "@type", "headline", "author"],
+    "breadcrumblist": ["@context", "@type", "itemListElement"],
+    "product": ["@context", "@type", "name", "description"],
+    "localbusiness": ["@context", "@type", "name", "address"],
+    "webapplication": ["@context", "@type", "name", "url"],
+}
+
+SCHEMA_TEMPLATES = {
+    "website": {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "{{name}}",
+        "url": "{{url}}",
+        "description": "{{description}}",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "{{url}}/search?q={search_term_string}",
+            },
+            "query-input": "required name=search_term_string",
+        },
+    },
+    "webapp": {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "{{name}}",
+        "url": "{{url}}",
+        "description": "{{description}}",
+        "applicationCategory": "UtilityApplication",
+        "operatingSystem": "Web",
+        "browserRequirements": "Requires JavaScript",
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+        "author": {"@type": "Organization", "name": "{{author}}"},
+    },
+    "faq": {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [],
+    },
+    "article": {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "{{title}}",
+        "description": "{{description}}",
+        "url": "{{url}}",
+        # image field required for Google Rich Results (#112)
+        "image": "{{image_url}}",
+        "datePublished": "{{date_published}}",
+        "dateModified": "{{date_modified}}",
+        "author": {"@type": "Person", "name": "{{author}}"},
+        "publisher": {
+            "@type": "Organization",
+            "name": "{{publisher}}",
+            "logo": {"@type": "ImageObject", "url": "{{logo_url}}"},
+        },
+    },
+    "organization": {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "{{name}}",
+        "url": "{{url}}",
+        "description": "{{description}}",
+        # logo must be ImageObject, not URL string (#113)
+        "logo": {"@type": "ImageObject", "url": "{{logo_url}}"},
+        # sameAs is the most important signal for brand_kg_readiness (3pt — #398)
+        # Placeholders use authoritative domains from SAMEAS_AUTHORITATIVE_DOMAINS
+        "sameAs": [
+            "https://www.linkedin.com/company/YOUR_COMPANY",
+            "https://github.com/YOUR_ORG",
+            "https://twitter.com/YOUR_HANDLE",
+        ],
+    },
+    "breadcrumb": {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "{{url}}"}],
+    },
+    # HowTo, Review and Product close the detect->generate gap: audit_schema.py already
+    # scores has_howto/has_product, and Review/AggregateRating is one of the more
+    # citation-relevant types per GEO research, but `geo schema --type` had no template
+    # for any of the three — a user told "you're missing HowTo schema" had no way to ask
+    # the tool that told them so to generate it.
+    "howto": {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "{{title}}",
+        "description": "{{description}}",
+        "image": "{{image_url}}",
+        "totalTime": "{{total_time}}",
+        "step": [
+            {"@type": "HowToStep", "name": "{{step_1_name}}", "text": "{{step_1_text}}"},
+        ],
+    },
+    "review": {
+        "@context": "https://schema.org",
+        "@type": "Review",
+        "itemReviewed": {"@type": "Thing", "name": "{{name}}"},
+        # ratingValue/bestRating as strings: schema.org accepts Number or Text, and a
+        # template placeholder is text until the user fills it in — matches how every
+        # other numeric-looking field in this file's templates is handled.
+        "reviewRating": {"@type": "Rating", "ratingValue": "{{rating_value}}", "bestRating": "5"},
+        "author": {"@type": "Person", "name": "{{author}}"},
+        "reviewBody": "{{review_body}}",
+    },
+    "product": {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "{{name}}",
+        "description": "{{description}}",
+        "image": "{{image_url}}",
+        "brand": {"@type": "Brand", "name": "{{author}}"},
+        "offers": {
+            "@type": "Offer",
+            "price": "{{price}}",
+            "priceCurrency": "USD",
+            "availability": "https://schema.org/InStock",
+        },
+    },
+}
+
+# ─── llms.txt patterns ──────────────────────────────────────────────────────
+
+CATEGORY_PATTERNS = [
+    (r"/blog/", "Blog & Articles"),
+    (r"/article/", "Articles"),
+    (r"/articles/", "Articles"),
+    (r"/post/", "Posts"),
+    (r"/news/", "News"),
+    (r"/finance/", "Finance Tools"),
+    (r"/health/", "Health & Wellness"),
+    (r"/math/", "Math"),
+    (r"/calcul", "Calculators"),
+    (r"/tool/", "Tools"),
+    (r"/tools/", "Tools"),
+    (r"/app/", "Applications"),
+    (r"/docs?/", "Documentation"),
+    (r"/guide/", "Guides"),
+    (r"/tutorial/", "Tutorials"),
+    (r"/tutorials/", "Tutorials"),
+    # Patterns with slash to avoid false positives (#117)
+    # /product → /production-process, /service → /service-terms
+    (r"/products/", "Products"),
+    (r"/product/", "Products"),
+    (r"/services/", "Services"),
+    (r"/service/", "Services"),
+    # New categories (#118)
+    (r"/faq/", "FAQ"),
+    (r"/faqs/", "FAQ"),
+    (r"/pricing/", "Pricing"),
+    (r"/price/", "Pricing"),
+    (r"/portfolio/", "Portfolio"),
+    (r"/case-stud", "Case Studies"),
+    (r"/support/", "Support"),
+    (r"/help/", "Support"),
+    (r"/team/", "Team"),
+    (r"/about-us(?:/|$)", "About"),
+    (r"/about(?:/|$)", "About"),
+    (r"/careers/", "Careers"),
+    (r"/jobs/", "Careers"),
+    (r"/contact", "Contact"),
+    (r"/privacy", "Privacy & Legal"),
+    (r"/terms", "Terms"),
+]
+
+SKIP_PATTERNS = [
+    r"/wp-",
+    r"/admin",
+    r"/login",
+    r"/logout",
+    r"/register",
+    r"/cart",
+    r"/checkout",
+    r"/account",
+    r"/user/",
+    r"\.(xml|json|rss|atom|pdf|jpg|png|css|js)$",
+    r"/tag/",
+    r"/category/\w+/page/",
+    r"/page/\d+",
+    # Additional skip patterns (#118)
+    r"/feed/",
+    r"/author/",
+    r"/amp/",
+    r"/api/",
+    r"/wp-json/",
+]
+
+# llms.txt section ordering
+SECTION_PRIORITY_ORDER = [
+    "Tools",
+    "Calculators",
+    "Finance Tools",
+    "Health & Wellness",
+    "Math",
+    "Applications",
+    "Main Pages",
+    "Documentation",
+    "Guides",
+    "Tutorials",
+    "Blog & Articles",
+    "Articles",
+    "Posts",
+    "News",
+    "Products",
+    "Services",
+    "FAQ",
+    "Pricing",
+    "Portfolio",
+    "Case Studies",
+    "Support",
+    "Team",
+    "Careers",
+    "About",
+    "Contact",
+    "Other",
+    "Privacy & Legal",
+    "Terms",
+]
+
+OPTIONAL_CATEGORIES = {"Privacy & Legal", "Terms", "Contact", "Other"}
+
+# ─── Scoring weights ─────────────────────────────────────────────────────────
+
+SCORING = {
+    # robots.txt — 18 points (was 20)
+    "robots_found": 5,
+    "robots_citation_ok": 13,  # was 15
+    # robots_some_allowed: removed from dict, now in ROBOTS_PARTIAL_SCORE (fix #332)
+    # llms.txt — 18 points (was 20) — graduated quality + blockquote v2
+    "llms_found": 5,  # was 6 — 1 point moved to llms_blockquote (#39)
+    "llms_h1": 2,  # was 3
+    "llms_blockquote": 1,  # #39: blockquote description present
+    "llms_sections": 2,  # was 4
+    "llms_links": 2,  # was 3
+    "llms_depth": 2,  # NEW: word_count >= 1000
+    "llms_depth_high": 2,  # NEW: word_count >= 5000
+    "llms_full": 2,  # NEW: has llms-full.txt
+    # Schema JSON-LD — 16 points (was 25) — any valid type + sameAs + richness
+    "schema_any_valid": 2,  # any valid JSON-LD schema found (was 5, reduced for richness)
+    "schema_richness": 3,  # NEW: schema with 5+ relevant attributes (Growth Marshal 2026)
+    "schema_faq": 3,  # was 5 — reduced, migrated to brand_topic_authority
+    "schema_article": 3,  # was 4
+    "schema_organization": 3,  # was 3
+    "schema_website": 2,  # was 3
+    "schema_sameas": 0,  # was 3, migrated to brand KG — kept at 0 for backward compat
+    # Meta tags — 14 points
+    "meta_title": 5,
+    "meta_description": 2,
+    "meta_canonical": 3,
+    "meta_og": 4,
+    # Content quality — 12 points (was 15) — structure checks
+    "content_h1": 2,  # was 3
+    "content_numbers": 1,  # was 2
+    "content_links": 1,  # was 2
+    "content_word_count": 2,  # was 4
+    "content_heading_hierarchy": 2,  # NEW: has H2 + H3 in correct hierarchy
+    "content_lists_or_tables": 2,  # NEW: has <ul>/<ol>/<table>
+    "content_front_loading": 2,  # NEW: key info in the first 30% of content
+    # Signals — 6 points (NEW category)
+    "signals_lang": 3,  # NEW: <html lang="...">
+    "signals_rss": 2,  # was 3
+    "signals_freshness": 1,  # was 2
+    # AI Discovery — 6 points (geo-checklist.dev standard)
+    "ai_discovery_well_known": 2,  # /.well-known/ai.txt present
+    "ai_discovery_summary": 2,  # /ai/summary.json valid
+    "ai_discovery_faq": 1,  # /ai/faq.json present
+    "ai_discovery_service": 1,  # /ai/service.json present
+    # Brand & Entity — 10 points (NEW category v4.3)
+    "brand_entity_coherence": 3,  # name consistent across H1/title/og:title/schema
+    "brand_kg_readiness": 3,  # sameAs pointing to Wikipedia/Wikidata/LinkedIn/Crunchbase
+    "brand_about_contact": 2,  # /about link + Organization with address/telephone
+    "brand_geo_identity": 1,  # hreflang + schema geo (address, areaServed)
+    "brand_topic_authority": 1,  # FAQ depth + Article with dateModified
+}
+
+# Partial robots.txt score: wildcard Allow without explicit permission to citation bots
+# Separate from the SCORING dict because it is an alternative (not additive) to robots_citation_ok (fix #332)
+ROBOTS_PARTIAL_SCORE = 10
+
+# Max points per scoring category — must stay in sync with the SCORING weights
+# above. Used to rank recommendations by recoverable points (gap #5).
+CATEGORY_MAX = {
+    "robots": 18,
+    "llms": 18,
+    "schema": 16,
+    "meta": 14,
+    "content": 12,
+    "brand_entity": 10,
+    "signals": 6,
+    "ai_discovery": 6,
+}
+
+# Schema richness thresholds — graduated scoring (#394)
+SCHEMA_RICHNESS_HIGH = 5  # avg >= 5 attrs → full points (3pt)
+SCHEMA_RICHNESS_MED = 4  # avg >= 4 attrs → 2pt
+SCHEMA_RICHNESS_LOW = 3  # avg >= 3 attrs → 1pt
+
+# JSON-LD safety caps (fix #182, #191)
+SCHEMA_JSONLD_MAX_BYTES: int = 512 * 1024  # skip scripts larger than 512 KiB
+SCHEMA_RAW_SCHEMAS_CAP: int = 50  # max raw schemas stored per page
+
+# Minimum word threshold for content_word_count (300 words = substantial content)
+CONTENT_MIN_WORDS = 300
+
+# Negative-signals thresholds
+BOILERPLATE_RATIO_THRESHOLD: float = 0.6  # page flagged as boilerplate-heavy above this ratio
+MIXED_SIGNALS_WORD_THRESHOLD: int = 1000  # H1 promises depth but body is below this word count
+
+# Negative-signals score penalties (gap #1 — applied in scoring.py)
+NEGATIVE_PENALTY_HIGH: int = 5  # severity == "high" (4+ signals): -5pt
+NEGATIVE_PENALTY_MED: int = 3  # severity == "medium" (2-3 signals): -3pt
+NEGATIVE_PENALTY_LOW: int = 1  # severity == "low" (1 signal): -1pt
+
+# X-Robots-Tag penalty (gap #2 — page marked noindex via HTTP header)
+XROBOTS_NOINDEX_PENALTY: int = 5
+
+# JS rendering thresholds — used in audit_js to detect SPA / JS-only pages
+JS_EMPTY_ROOT_CHARS: int = 50  # SPA root element considered empty below this char count
+JS_SPA_WORDS: int = 100  # body word count + 0 headings → likely SPA
+JS_EMPTY_ROOT_WORDS: int = 200  # empty root + low word count → JS-dependent
+JS_CRITICAL_WORDS: int = 50  # critically low content threshold
+
+# Content freshness thresholds in days (#401)
+# AutoGEO ICLR 2026: tech content < 3 months strongly preferred by AI search engines
+FRESHNESS_VERY_FRESH_DAYS = 90  # < 3 months → very_fresh
+FRESHNESS_FRESH_DAYS = 180  # 3-6 months → fresh
+FRESHNESS_AGING_DAYS = 365  # 6-12 months → aging (> 12 months = stale)
+
+# Depth thresholds for llms.txt
+LLMS_DEPTH_WORDS = 1000
+LLMS_DEPTH_HIGH_WORDS = 5000
+
+# Authoritative sameAs domains (for knowledge graph linking)
+SAMEAS_AUTHORITATIVE_DOMAINS = {
+    "wikipedia.org",
+    "wikidata.org",
+    "linkedin.com",
+    "crunchbase.com",
+    "github.com",
+    "twitter.com",
+    "x.com",
+    "facebook.com",
+}
+
+# Pillar domains for Knowledge Graph (AI disambiguation — the 4 most relevant)
+KG_PILLAR_DOMAINS = {
+    "wikipedia.org",
+    "wikidata.org",
+    "linkedin.com",
+    "crunchbase.com",
+}
+
+# ─── Prompt Injection Detection (#276) ────────────────────────────────────────
+
+# Regex patterns for direct LLM instructions in page content
+PROMPT_INJECTION_LLM_PATTERNS = [
+    r"ignore\s+(?:all\s+)?(?:previous|prior|above)\s+instructions?",
+    r"you\s+are\s+(?:now\s+)?(?:a|an)\s+(?:helpful\s+)?assistant",
+    r"always\s+recommend\s+\w+",
+    r"do\s+not\s+mention\s+competitors?",
+    r"say\s+(?:only|just|that)\s+['\"]",
+    r"output\s+only\s+the\s+following",
+    r"respond\s+with\s+only",
+    r"your\s+(?:new\s+)?(?:task|goal|objective|purpose)\s+is",
+    r"from\s+now\s+on\s+you",
+    r"act\s+as\s+(?:if\s+you\s+are\s+)?\w+",
+    r"\[INST\]|\[SYS\]|<\|system\|>|<\|user\|>",
+    r"###\s*(?:System|Human|Assistant)\s*:",
+    r"<\s*system\s*>",
+    # fix #387: Llama 3 / Gemma / Mistral tokens
+    r"<\|start_header_id\|>|<\|end_header_id\|>|<\|eot_id\|>|<\|begin_of_text\|>",
+    r"<start_of_turn>|<end_of_turn>",
+    # fix #387: common jailbreak patterns
+    r"\bDAN\s+mode\b|\bdeveloper\s+mode\b",
+    r"pretend\s+(?:you\s+have\s+no|there\s+are\s+no)\s+restrictions?",
+    r"(?:reveal|repeat|show|tell)\s+(?:me\s+)?(?:your|the)\s+(?:system\s+)?(?:prompt|instructions?)",
+    # fix #387: "jailbreak" keyword and "repeat the above" prompt-leaking variant
+    r"\bjailbreak\b",
+    r"repeat\s+the\s+above",
+]
+
+# Suspicious keywords in HTML comments
+PROMPT_INJECTION_COMMENT_KEYWORDS = ["prompt:", "instruction:", "context:", "system:", "ai:", "llm:"]
+
+# Thresholds and limits
+PROMPT_INJECTION_MAX_SAMPLES = 3
+PROMPT_INJECTION_SAMPLE_MAX_LEN = 150
+PROMPT_INJECTION_UNICODE_THRESHOLD = 5
+PROMPT_INJECTION_COMMENT_MAX_LEN = 500
+MICROFONT_SIZE_THRESHOLD_PX = 2.0
+
+# ─── Shared thresholds (fix #388) ────────────────────────────────────────────
+
+# Keyword stuffing threshold: single-word density above which it is considered spam
+# SEMrush 2025 research: > 2.5% is a manipulation signal for AI engines
+KEYWORD_STUFFING_THRESHOLD = 0.025
+
+# URL patterns for "about" pages (fix #391)
+ABOUT_LINK_PATTERNS = [
+    "/about",
+    "/manifesto",
+    "/chi-siamo",
+    "/team",
+    "/company",
+    "/mission",
+    "/our-story",
+    "/who-we-are",
+    "/storia",
+    "/azienda",
+]
+
+# ─── Trust Stack Score (#273) ─────────────────────────────────────────────────
+
+# Composite grading thresholds (0-25): (min_threshold, grade, trust_level)
+TRUST_STACK_GRADE_BANDS = [
+    (22, "A", "excellent"),
+    (17, "B", "high"),
+    (11, "C", "medium"),
+    (6, "D", "low"),
+    (0, "F", "low"),
+]
+# 5 layers (technical, identity, social, academic, consistency), 5 points max each (#perception)
+TRUST_STACK_MAX_SCORE = 25
+
+# Authoritative source domains for Academic Trust
+ACADEMIC_AUTHORITY_DOMAINS = [
+    "ncbi.nlm.nih.gov",
+    "pubmed.ncbi.nlm.nih.gov",
+    "doi.org",
+    "scholar.google.com",
+    "arxiv.org",
+    "researchgate.net",
+    "nature.com",
+    "science.org",
+    "jstor.org",
+    "ssrn.com",
+]
+
+# Recognized social domains for Social Trust
+SOCIAL_PROOF_DOMAINS = [
+    "twitter.com",
+    "x.com",
+    "instagram.com",
+    "facebook.com",
+    "linkedin.com",
+    "youtube.com",
+    "tiktok.com",
+    "threads.net",
+]
+
+# Heading patterns for the References/Sources section
+REFERENCES_HEADING_PATTERNS = [
+    "references",
+    "fonti",
+    "sources",
+    "bibliography",
+    "note",
+    "citazioni",
+    "riferimenti",
+    "bibliografia",
+]
+
+# Minimum statistical match count for Academic Trust
+ACADEMIC_STATISTICS_MIN_MATCHES = 2
+
+# ─── AI Discovery validation thresholds (#389) ───────────────────────────────
+
+# Minimum length for summary.json fields
+AI_DISCOVERY_SUMMARY_NAME_MIN_LEN: int = 3
+AI_DISCOVERY_SUMMARY_DESC_MIN_LEN: int = 20
+
+# Minimum length for faq.json item fields
+AI_DISCOVERY_FAQ_QUESTION_MIN_LEN: int = 10
+AI_DISCOVERY_FAQ_ANSWER_MIN_LEN: int = 20
+
+# Minimum length for service.json name field
+AI_DISCOVERY_SERVICE_NAME_MIN_LEN: int = 3
+
+# ─── Score bands ─────────────────────────────────────────────────────────────
+
+SCORE_BANDS = {
+    "excellent": (86, 100),  # was (91, 100)
+    "good": (68, 85),  # was (71, 90)
+    "foundation": (36, 67),  # was (41, 70)
+    "critical": (0, 35),  # was (0, 40)
+}
+
+# ─── Citability thresholds (#433) ───────────────────────────────────────────
+
+# Flesch-Kincaid Grade Level formula constants (published formula, not magic numbers)
+FLESCH_KINCAID_A = 0.39
+FLESCH_KINCAID_B = 11.8
+FLESCH_KINCAID_C = -15.59
+
+# TTR (Type-Token Ratio) sliding window for vocabulary diversity
+TTR_WINDOW_SIZE = 200
+TTR_THRESHOLD = 0.40
+
+# Front-loading: keyword density threshold in first 30% of content
+FRONT_LOADING_DENSITY_THRESHOLD = 0.05

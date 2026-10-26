@@ -1,0 +1,88 @@
+name: 🐛 Bug Report
+description: Something isn't working as expected
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please fill in the details below so we can reproduce and fix the issue.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "When I run `geo audit --url https://example.com`, I get..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to trigger the bug.
+      value: |
+        1. Install: `pip install geo-optimizer-skill`
+        2. Run: `geo audit --url https://...`
+        3. See error: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output / logs
+      description: Paste the full error output here.
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: geo-optimizer version
+      description: "Run `geo --version` to get this."
+      placeholder: "3.5.0"
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: "Run `python --version` to get this."
+      placeholder: "3.11.5"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Docker
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Installation method
+      options:
+        - pip install (PyPI)
+        - pip install -e (from source)
+        - Docker
+        - Other
+    validations:
+      required: true

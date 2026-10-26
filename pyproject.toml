@@ -1,0 +1,171 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geo-optimizer-skill"
+version = "4.17.1"
+description = "Generative Engine Optimization toolkit — make websites visible to AI search engines"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "skywalkerqqq", email = "skywalkerqqq@users.noreply.github.com"},
+]
+keywords = ["geo", "seo", "ai", "llm", "optimization", "schema", "llms-txt", "generative-engine"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "click>=8.0,<9.0",
+    "requests>=2.28.0,<3.0.0",
+    "beautifulsoup4>=4.12.0,<5.0.0",
+    "lxml>=4.9.0,<7.0.0",
+    "urllib3>=1.26.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+rich = [
+    "rich>=13.0,<16.0",
+]
+config = [
+    "pyyaml>=6.0,<7.0",
+]
+async = [
+    "httpx>=0.27.0,<1.0",
+]
+web = [
+    "fastapi>=0.110.0,<1.0",
+    "uvicorn[standard]>=0.27.0,<1.0",
+    "markdown>=3.5.0,<4.0",
+    "python-multipart>=0.0.7,<1.0",
+]
+pdf = [
+    "weasyprint>=60.0",
+]
+mcp = [
+    "mcp>=1.0.0",
+]
+embedding = [
+    "sentence-transformers>=2.2.0,<6.0",
+]
+llm = [
+    "openai>=1.0.0,<3.0",
+    "anthropic>=0.30.0,<2.0",
+]
+dev = [
+    "pytest>=7.0,<10.0",
+    "pytest-cov>=4.0,<8.0",
+    "ruff>=0.8.0",
+    "pyyaml>=6.0,<7.0",
+    "httpx>=0.27.0,<1.0",
+]
+# Gruppo convenienza: installa tutte le dipendenze opzionali utente (#136)
+all = [
+    "geo-optimizer-skill[async,web,mcp,pdf,config]",
+]
+
+[project.urls]
+Homepage = "https://github.com/skywalkerqqq/geo-optimizer-skill"
+Documentation = "https://github.com/skywalkerqqq/geo-optimizer-skill#readme"
+Repository = "https://github.com/skywalkerqqq/geo-optimizer-skill"
+Issues = "https://github.com/skywalkerqqq/geo-optimizer-skill/issues"
+
+[project.scripts]
+geo = "geo_optimizer.cli.main:cli"
+geo-mcp = "geo_optimizer.mcp.server:main"
+geo-web = "geo_optimizer.web.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+# Solo i file compilati .mo — i sorgenti .po non appartengono al pacchetto distribuito (#135)
+"geo_optimizer" = [
+    "py.typed",
+    "i18n/locales/*/LC_MESSAGES/*.mo",
+    "web/templates/*.html",
+    "web/docs/*.md",
+    "skills/catalog/README.md",
+    "skills/catalog/*/skill.yaml",
+    "skills/catalog/*/prompt.md",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "network: test che richiedono accesso rete (skip in CI con -m 'not network')",
+]
+
+[tool.coverage.run]
+source = ["geo_optimizer"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = [
+    "E501",    # Linee troppo lunghe (gestito con line-length)
+    "SIM108",  # Operatore ternario (peggiora leggibilità in alcuni casi)
+    "SIM105",  # contextlib.suppress (più verboso del try-except-pass)
+    "SIM114",  # Combina if-branch (peggiora leggibilità del CLI output)
+    "SIM110",  # Comprensione any() per for-return (non sempre più leggibile)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/test_integration.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+# Gradual adoption: strict on new modules, lenient on legacy
+exclude = [
+    "tests/",
+    "build/",
+    "dist/",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "geo_optimizer.web.app",
+    "geo_optimizer.mcp.*",
+    "geo_optimizer.i18n.*",
+    "geo_optimizer.core.fixer",
+    "geo_optimizer.core.schema_injector",
+    "geo_optimizer.core.audit_cdn",
+    "geo_optimizer.core.llms_generator",
+    "geo_optimizer.utils.http",
+    "geo_optimizer.utils.http_async",
+    "geo_optimizer.models.project_config",
+    "geo_optimizer.skills.loader",
+    "mcp.*",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "mcp.*"
+follow_imports = "skip"

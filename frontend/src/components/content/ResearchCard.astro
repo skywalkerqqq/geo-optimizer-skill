@@ -1,0 +1,75 @@
+---
+import type { ResearchSource } from '../../lib/researchContent';
+
+interface Props {
+  source: ResearchSource;
+}
+
+const { source } = Astro.props;
+
+const typeLabels: Record<string, string> = {
+  paper: 'Peer-reviewed paper',
+  benchmark: 'Benchmark',
+  report: 'Industry report',
+  analysis: 'Internal analysis',
+};
+---
+
+<article class="rounded-xl border border-border bg-bg-surface p-5 md:p-6 transition-colors hover:border-accent-teal/20">
+  <header class="flex items-start justify-between gap-4">
+    <div>
+      <span class="inline-block text-[10px] font-mono font-semibold uppercase tracking-wider text-accent-teal mb-2">
+        {typeLabels[source.type] || source.type}
+      </span>
+      <h3 class="font-display text-lg md:text-xl font-semibold text-text-primary leading-snug">
+        {source.title}
+      </h3>
+      {(source.venue || source.year) && (
+        <p class="mt-1 text-sm text-text-muted">
+          {source.venue}{source.venue && source.year ? ' — ' : ''}{source.year}
+          {source.authors && ` · ${source.authors}`}
+        </p>
+      )}
+    </div>
+  </header>
+
+  <div class="mt-4 space-y-4">
+    <div>
+      <p class="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-1">Finding</p>
+      <p class="text-sm text-text-secondary leading-relaxed">{source.finding}</p>
+    </div>
+
+    <div>
+      <p class="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-1">How GEO Optimizer uses it</p>
+      <p class="text-sm text-text-secondary leading-relaxed">{source.howWeUseIt}</p>
+    </div>
+
+    {source.metrics && (
+      <div class="pt-2">
+        <p class="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-2">Key metrics</p>
+        <dl class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {source.metrics.map((m) => (
+            <div class="rounded-lg border border-border bg-bg-base p-2.5">
+              <dt class="text-[10px] font-mono text-text-muted uppercase tracking-wider">{m.label}</dt>
+              <dd class="mt-0.5 text-sm font-semibold text-text-primary">{m.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    )}
+
+    {source.link && (
+      <div class="pt-1">
+        <a
+          href={source.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 text-sm font-medium text-accent-teal hover:underline underline-offset-2 decoration-border"
+        >
+          {source.linkLabel || 'Read source'}
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+        </a>
+      </div>
+    )}
+  </div>
+</article>

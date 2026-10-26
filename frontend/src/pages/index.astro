@@ -1,0 +1,477 @@
+---
+import Shell from '../components/Shell.astro';
+import AuditForm from '../components/AuditForm';
+import StatsBar from '../components/StatsBar';
+import ScoreSurface from '../components/product/ScoreSurface.astro';
+import RetrievalPath from '../components/product/RetrievalPath.astro';
+import MonitorSurface from '../components/product/MonitorSurface.astro';
+import { getBenchmark } from '../utils/benchmark';
+import { getPublicStats } from '../utils/publicStats';
+
+// Gli otto pesi di scoring, come pubblicati in models/config.py (SCORING).
+// Sono qui perché la pagina rivendica "auditable scoring": affermarlo e non mostrarlo
+// è la stessa opacità che il prodotto critica. Tenere allineato ai pesi reali.
+const SCORING_WEIGHTS = [
+  ['Robots.txt', 18, 'Whether citation crawlers are allowed to fetch the site at all.'],
+  ['llms.txt', 18, 'Presence and depth of the root-level orientation file, including llms-full.txt.'],
+  ['Schema JSON-LD', 16, 'Valid structured data: Organization, WebSite, Article, FAQ.'],
+  ['Meta tags', 14, 'Title, description, canonical, and Open Graph completeness.'],
+  ['Content', 12, 'Heading hierarchy, word count, lists, front-loaded answers.'],
+  ['Signals', 6, 'Declared language, feed availability, freshness date.'],
+  ['AI discovery', 6, 'The .well-known/ai.txt and /ai/*.json endpoints.'],
+  ['Brand & entity', 10, 'Naming coherence, Knowledge Graph readiness, topic authority.'],
+] as const;
+
+// Aggregati della coorte, letti a build time da GET /api/public/benchmark: erano
+// hardcoded perché la build Docker gira prima che l'app locale sia in piedi, ma
+// l'endpoint è pubblico e la build lo raggiunge come già fa con Sanity. I valori scritti
+// a mano restavano indietro senza che nessuno se ne accorgesse — «750+ siti, media 54.3»
+// contro i 900+ e 54.6 reali. Se l'endpoint non risponde si usano i valori di fallback:
+// vedi utils/benchmark.ts.
+const BENCHMARK = await getBenchmark();
+
+// Stessa ragione: i contatori di StatsBar arrivavano solo via JS, quindi l'HTML statico
+// mostrava a un crawler il fallback fermo a luglio (587 stelle, 5.134 download).
+const { stats: PUBLIC_STATS, isLive: STATS_ARE_LIVE } = await getPublicStats();
+
+const trustCards = [
+  {
+    title: 'Open source (MIT)',
+    desc: 'Full methodology, scoring weights, and source code on GitHub. No proprietary scoring.',
+    link: { label: 'View on GitHub', href: 'https://github.com/skywalkerqqq/geo-optimizer-skill' },
+  },
+  {
+    title: 'Research-backed',
+    desc: 'Scoring grounded in Princeton KDD 2024 and AutoGEO ICLR 2026 research on AI search retrieval.',
+    link: { label: 'Read the research', href: '/research/' },
+  },
+  {
+    title: 'Auditable scoring',
+    desc: 'Every signal is traceable to a published rule. Score breakdowns show per-category contributions.',
+    link: null,
+  },
+  {
+    title: 'Machine-readable output',
+    desc: 'JSON format designed for CI/CD pipelines, integrations, and the GeoReady platform API.',
+    link: null,
+  },
+];
+
+const actions = [
+  {
+    label: 'Run a free check',
+    desc: 'Enter any public URL above — no account required.',
+    href: '#audit-form',
+    badge: 'Available now',
+    badgeStyle: 'bg-accent-success/10 text-accent-success',
+  },
+  {
+    label: 'Use the open-source CLI',
+    desc: 'pip install geo-optimizer-skill — scoring, access simulation, crawler log analysis. MIT licensed.',
+    href: 'https://github.com/skywalkerqqq/geo-optimizer-skill',
+    badge: 'Free forever',
+    badgeStyle: 'bg-accent-success/10 text-accent-success',
+  },
+  {
+    label: 'Read the research',
+    desc: 'Princeton KDD 2024 and AutoGEO ICLR 2026 behind the scoring methodology.',
+    href: '/research/',
+    badge: 'Documentation',
+    badgeStyle: 'bg-bg-subtle text-text-muted border border-border',
+  },
+  {
+    label: 'View plans',
+    desc: 'Pro monitoring, history, and alerts. Founding price, locked for life.',
+    href: '/pricing/',
+    badge: 'Live now',
+    badgeStyle: 'bg-accent-teal/10 text-accent-teal',
+  },
+];
+
+const faqs = [
+  {
+    q: 'What is Generative Engine Optimization?',
+    a: 'GEO is the practice of making websites discoverable, readable, and citable by AI search engines such as ChatGPT, Perplexity, Claude, and Gemini. It focuses on structured data, content hierarchy, and technical signals that AI crawlers prioritize.',
+  },
+  {
+    q: 'What does GeoReady check?',
+    a: 'GeoReady audits 8 categories: robots.txt, llms.txt, JSON-LD schema, meta tags, content quality, technical signals, AI discovery paths, and brand entity signals. It also detects prompt injection patterns and negative signals through the same open-source GEO Optimizer engine. The CLI additionally offers Agent Access Audit (bot vs browser access simulation via `geo access`) and AI Crawler Activity Analytics (server log parsing via `geo logs`).',
+  },
+  {
+    q: 'How is GEO different from traditional SEO?',
+    a: 'Traditional SEO optimizes for keyword rankings and backlinks in conventional search engines. GEO optimizes for AI citation signals: structured data, clear content architecture, AI crawler permissions, and self-contained answer blocks. The two complement rather than replace each other.',
+  },
+  {
+    q: 'Is the Pro plan available now?',
+    a: 'Yes. Pick a plan and your account activates immediately. No sales call, no waitlist.',
+  },
+  {
+    q: 'Is GeoReady open source?',
+    a: 'The core GEO Optimizer engine is MIT licensed. Source code, scoring weights, and methodology are publicly available on GitHub. The CLI and the free web audit remain free; GeoReady Pro adds monitoring, history, alerts, exports, and team workflows.',
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": faqs.map(f => ({
+    "@type": "Question",
+    "name": f.q,
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": f.a
+    }
+  }))
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+<Shell
+  title="Free AI SEO Audit for ChatGPT & Perplexity — GeoReady"
+  description="Run a free AI SEO and GEO audit. Find crawler, llms.txt, schema, content, and citation gaps that stop ChatGPT, Perplexity, Claude, and Gemini citing your site."
+  canonical="https://geoready.dev/"
+>
+  {/* Hero */}
+  <section id="audit-form" data-hero-bleed class="relative overflow-hidden bg-bg-dark text-text-inverse">
+    <div
+      aria-hidden="true"
+      class="absolute inset-0 opacity-45"
+      style="background-image: radial-gradient(circle at 76% 24%, rgba(94,234,212,0.16), transparent 34%), linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.08) 1px, transparent 1px); background-size: auto, 56px 56px, 56px 56px;"
+    />
+    <div class="relative max-w-7xl mx-auto px-6 py-20 md:py-28">
+      <div class="grid items-center gap-10 lg:grid-cols-[minmax(0,0.82fr)_minmax(520px,1fr)]">
+        <div class="max-w-7xl">
+          <p class="mb-5 inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-teal-100">
+            Free AI SEO + GEO audit
+          </p>
+          <h1 class="text-4xl md:text-6xl font-bold tracking-tight leading-[1.05]">
+            Find the gaps that keep your site out of AI answers.
+          </h1>
+          <p class="mt-6 text-lg md:text-xl text-text-muted leading-relaxed max-w-2xl">
+            Buyers ask ChatGPT, Perplexity, Claude, and Gemini before they click a search result.
+            GeoReady checks whether your URL can be reached, understood, and cited by those answer engines,
+            then gives you a 0–100 score and prioritized fixes across 8 signal categories.
+          </p>
+
+          <div class="mt-8 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="border-l border-teal-300/40 pl-4">
+              <p class="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-100">Crawler access</p>
+              <p class="mt-1 text-sm text-text-muted">Robots.txt, headers, rendering, and blocked AI bots.</p>
+            </div>
+            <div class="border-l border-teal-300/40 pl-4">
+              <p class="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-100">Machine clarity</p>
+              <p class="mt-1 text-sm text-text-muted">llms.txt, schema, metadata, and entity signals.</p>
+            </div>
+            <div class="border-l border-teal-300/40 pl-4">
+              <p class="font-mono text-[11px] uppercase tracking-[0.16em] text-teal-100">Citation readiness</p>
+              <p class="mt-1 text-sm text-text-muted">Self-contained answers, facts, and ranked fixes.</p>
+            </div>
+          </div>
+
+          <div class="mt-10">
+            <AuditForm client:load />
+          </div>
+          <p class="mt-3 text-xs text-text-muted">
+            Free report, no account required. Use Pro when you want weekly monitoring, score history, and regression alerts.
+          </p>
+
+          <StatsBar client:load initial={PUBLIC_STATS} initialIsLive={STATS_ARE_LIVE} />
+
+          <div class="mt-6 flex flex-wrap items-center gap-4 text-sm">
+            <a href="/report/demo/" data-cta="home_hero_demo_report" class="text-text-muted hover:text-text-inverse transition-colors">View demo report</a>
+            <span class="text-text-muted/40">·</span>
+            <a href="/geo-readiness-manual/" data-cta="home_hero_manual" class="text-text-muted hover:text-text-inverse transition-colors">Read the GEO manual</a>
+            <span class="text-text-muted/40">·</span>
+            <a href="/pricing/" data-cta="home_hero_pro_monitoring" class="text-text-muted hover:text-text-inverse transition-colors">Pro monitoring</a>
+          </div>
+        </div>
+
+        <div class="relative lg:pl-6">
+          <ScoreSurface variant="dark" score={87} band="Excellent" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* What is AI search visibility */}
+  <section class="relative overflow-hidden border-b border-border bg-bg-base">
+    <div class="max-w-7xl mx-auto px-6 py-20 md:py-24">
+      <div class="grid gap-12 lg:grid-cols-[minmax(0,0.78fr)_minmax(420px,0.82fr)] lg:items-center">
+        <div class="max-w-7xl">
+          <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-accent-teal">Category map</p>
+          <h2 class="mt-3 text-3xl md:text-5xl font-bold text-text-primary tracking-tight">AI SEO is not a checklist. It is a retrieval path.</h2>
+          <p class="mt-5 text-lg text-text-secondary leading-relaxed">
+            Traditional SEO asks whether a page can rank. AI SEO asks whether an answer engine can reach it, parse it, trust it, and cite it.
+          </p>
+
+          <div class="mt-8 space-y-4">
+            {[
+              ['01', 'Access', 'Crawler permissions, HTTP behavior, and server-rendered content decide whether AI systems can reach the page.'],
+              ['02', 'Meaning', 'llms.txt, schema, headings, and entity consistency help the model understand what the page is about.'],
+              ['03', 'Citation', 'Self-contained answers and factual density make the page easier to quote inside generated responses.'],
+            ].map(([num, title, text]) => (
+              <div class="grid grid-cols-[44px_minmax(0,1fr)] gap-4 border-l border-border bg-bg-surface/60 p-4">
+                <span class="font-mono text-xs text-accent-teal">{num}</span>
+                <div>
+                  <h3 class="font-display text-base font-semibold text-text-primary">{title}</h3>
+                  <p class="mt-1 text-sm leading-relaxed text-text-secondary">{text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div class="mt-7 flex flex-wrap items-center gap-4 text-sm">
+            <a href="/research/" class="text-accent-teal hover:text-accent-teal-dark transition-colors">Read the research</a>
+            <span class="text-text-muted">·</span>
+            <a href="/guides/" class="text-accent-teal hover:text-accent-teal-dark transition-colors">AI visibility guides</a>
+            <span class="text-text-muted">·</span>
+            <a href="/report/demo/" class="text-accent-teal hover:text-accent-teal-dark transition-colors">View a demo report</a>
+          </div>
+        </div>
+
+        <div class="relative lg:pl-6">
+          <RetrievalPath variant="light" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* How it works */}
+  <section class="max-w-7xl mx-auto px-6 py-16">
+    <div class="max-w-7xl">
+      <h2 class="text-2xl md:text-3xl font-bold text-text-primary">How GeoReady works</h2>
+      <div class="mt-8 space-y-8">
+        <div>
+          <h3 class="text-lg font-semibold text-text-primary">1. Enter a URL</h3>
+          <p class="mt-2 text-text-secondary leading-relaxed">
+            Submit any public website address. The tool resolves and validates the URL,
+            then fetches the page source for analysis.
+          </p>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-text-primary">2. Get a GEO score</h3>
+          <p class="mt-2 text-text-secondary leading-relaxed">
+            The scan evaluates eight signal categories and returns a 0–100 score with a
+            per-category breakdown. These are the published weights — the same numbers the
+            open-source engine uses, so any score can be recomputed by hand:
+          </p>
+          <div class="mt-4 overflow-x-auto rounded-[--radius-lg] border border-border bg-bg-surface">
+            <table class="w-full text-left text-sm">
+              <thead>
+                <tr class="border-b border-border text-text-muted">
+                  <th scope="col" class="px-4 py-3 font-mono text-[11px] uppercase tracking-wider">Category</th>
+                  <th scope="col" class="px-4 py-3 font-mono text-[11px] uppercase tracking-wider">Points</th>
+                  <th scope="col" class="px-4 py-3 font-mono text-[11px] uppercase tracking-wider">What it measures</th>
+                </tr>
+              </thead>
+              <tbody>
+                {SCORING_WEIGHTS.map(([name, points, what]) => (
+                  <tr class="border-b border-border/60 last:border-0 align-top">
+                    <th scope="row" class="px-4 py-3 font-display font-semibold text-text-primary whitespace-nowrap">{name}</th>
+                    <td class="px-4 py-3 font-mono text-accent-teal">{points}</td>
+                    <td class="px-4 py-3 text-text-secondary leading-relaxed">{what}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p class="mt-3 text-sm text-text-muted">
+            Bands: 86–100 excellent · 68–85 good · 36–67 foundation · 0–35 critical.
+          </p>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-text-primary">3. Apply prioritized fixes</h3>
+          <p class="mt-2 text-text-secondary leading-relaxed">
+            Each finding is ranked by impact and assigned a severity level. The report includes
+            actionable recommendations with specific file changes and schema additions.
+          </p>
+        </div>
+      </div>
+
+      {/* First-party baseline — a self-contained, quotable passage. Our own
+          measurement is the one claim on this page no competitor can restate. */}
+      <div class="mt-10 rounded-[--radius-lg] border border-border bg-bg-surface p-6">
+        <h3 class="text-lg font-semibold text-text-primary">What a typical site scores</h3>
+        <figure class="mt-3">
+          <blockquote class="border-l-2 border-accent-teal pl-4">
+            <p class="text-text-secondary leading-relaxed">
+              We measured the sites scored through GeoReady, and our data shows the average
+              scores <strong class="text-text-primary">{BENCHMARK.average} out of 100</strong>,
+              with a median of {BENCHMARK.median}. Only {BENCHMARK.llmsTxtAdoption} publish an
+              llms.txt file. A score in the fifties is therefore ordinary rather than alarming:
+              most sites leave a large share of their AI-visibility points unclaimed, and the
+              gaps sit in signals a tool can find mechanically.
+            </p>
+          </blockquote>
+          <figcaption class="mt-3 text-sm text-text-muted">
+            GeoReady benchmark, {BENCHMARK.sampleLabel}, as of {BENCHMARK.asOf}.
+            Latest audit per domain, aggregates only — the sample is self-selected, so read it
+            as a baseline among sites that chose to measure.
+            <a href="/state-of-geo/" class="underline hover:no-underline">See the live benchmark</a>.
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  {/* Trust cards */}
+  <section class="max-w-7xl mx-auto px-6 py-20">
+    <h2 class="text-xl md:text-2xl font-bold text-text-primary mb-8">Why trust this tool</h2>
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {trustCards.map((c) => (
+        <div class="p-6 rounded-[--radius-lg] border border-border bg-bg-surface hover:border-accent-teal/40 transition-colors flex flex-col">
+          <h3 class="font-display text-base font-semibold text-text-primary">{c.title}</h3>
+          <p class="mt-2 text-sm text-text-secondary leading-relaxed flex-1">{c.desc}</p>
+          {c.link && (
+            <a
+              href={c.link.href}
+              target={c.link.href.startsWith('http') ? '_blank' : undefined}
+              rel={c.link.href.startsWith('http') ? 'noopener' : undefined}
+              class="mt-4 text-xs font-mono text-accent-teal hover:underline"
+            >
+              {c.link.label} →
+            </a>
+          )}
+        </div>
+      ))}
+    </div>
+  </section>
+
+  {/* What you can do today */}
+  <section class="max-w-7xl mx-auto px-6 py-16 border-t border-border">
+    <h2 class="text-xl md:text-2xl font-bold text-text-primary mb-8">What you can do today</h2>
+    <div class="grid sm:grid-cols-2 gap-4">
+      {actions.map((a) => (
+        <a
+          href={a.href}
+          target={a.href.startsWith('http') ? '_blank' : undefined}
+          rel={a.href.startsWith('http') ? 'noopener' : undefined}
+          class="group flex items-start gap-4 p-5 rounded-[--radius-lg] border border-border bg-bg-surface hover:border-accent-teal/40 transition-colors"
+        >
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1 flex-wrap">
+              <p class="text-sm font-semibold text-text-primary group-hover:text-accent-teal transition-colors">{a.label}</p>
+              <span class={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full ${a.badgeStyle}`}>{a.badge}</span>
+            </div>
+            <p class="text-sm text-text-secondary leading-relaxed">{a.desc}</p>
+          </div>
+          <svg class="mt-0.5 w-4 h-4 shrink-0 text-text-muted group-hover:text-accent-teal transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+          </svg>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  {/* From audit to monitoring */}
+  <section class="relative overflow-hidden bg-bg-dark text-text-inverse">
+    <div class="max-w-7xl mx-auto px-6 py-20 md:py-24">
+      <div class="grid gap-10 lg:grid-cols-[minmax(420px,0.92fr)_minmax(0,0.72fr)] lg:items-center">
+        <div class="relative lg:pr-6">
+          <MonitorSurface variant="dark" />
+        </div>
+
+        <div>
+          <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-teal-100">From audit to monitoring</p>
+          <h2 class="mt-3 text-3xl md:text-5xl font-bold tracking-tight">
+            One audit gives the baseline. Monitoring tells you when the baseline moves.
+          </h2>
+          <p class="mt-5 text-base leading-relaxed text-text-muted">
+            The free audit is a point-in-time diagnosis. GeoReady Pro turns the same scoring engine into an ongoing signal for teams and client work.
+          </p>
+
+          <div class="mt-8 grid gap-3">
+            <div class="border border-white/10 bg-white/[0.04] p-5">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="font-display text-base font-semibold">Free audit</h3>
+                <span class="font-mono text-[10px] uppercase tracking-[0.16em] text-teal-100">Available</span>
+              </div>
+              <p class="mt-2 text-sm leading-relaxed text-text-muted">
+                GEO score, top recommendations, and a fast read on whether a URL is crawlable and understandable.
+              </p>
+            </div>
+            <div class="border border-teal-300/30 bg-teal-300/[0.06] p-5">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="font-display text-base font-semibold">GeoReady Pro</h3>
+                <span class="font-mono text-[10px] uppercase tracking-[0.16em] text-teal-100">Live</span>
+              </div>
+              <p class="mt-2 text-sm leading-relaxed text-text-muted">
+                Weekly monitoring, report history, regression alerts, PDF export, and API access.
+              </p>
+              <a
+                href="https://app.geoready.dev/signup?plan=pro"
+                data-plan-id="pro"
+                data-plan-name="Pro"
+                data-plan-price="$19"
+                data-plan-period="/month"
+                data-plan-currency="USD"
+                data-cta-location="home_monitoring_section"
+                class="mt-4 inline-flex text-sm font-semibold text-teal-100 underline underline-offset-4"
+              >
+                Start with Pro
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* FAQ */}
+  <section class="max-w-7xl mx-auto px-6 py-16 border-t border-border">
+    <div class="max-w-7xl">
+      <h2 class="text-2xl md:text-3xl font-bold text-text-primary mb-8">Frequently asked questions</h2>
+      <div class="space-y-6">
+        {faqs.map((faq) => (
+          <div>
+            <h3 class="text-base font-semibold text-text-primary">{faq.q}</h3>
+            <p class="mt-2 text-sm text-text-secondary leading-relaxed">{faq.a}</p>
+          </div>
+        ))}
+        <div>
+          <h3 class="text-base font-semibold text-text-primary">Does the audit store submitted URLs?</h3>
+          <p class="mt-2 text-sm text-text-secondary leading-relaxed">
+            URLs are processed in real time. No persistent storage of submitted URLs is declared unless
+            explicitly configured in the backend. See the <a href="/privacy/" class="text-accent-teal hover:underline">Privacy Policy</a> for details.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* Final CTA */}
+  <section class="max-w-7xl mx-auto px-6 pb-20">
+    <div class="overflow-hidden border border-border bg-bg-surface">
+      <div class="grid lg:grid-cols-[minmax(0,0.82fr)_minmax(420px,0.78fr)]">
+        <div class="p-8 md:p-12 lg:p-14">
+          <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-accent-teal">Open scoring, practical output</p>
+          <h2 class="mt-3 text-3xl md:text-5xl font-bold text-text-primary tracking-tight">
+            AI search is already deciding which sites get cited.
+          </h2>
+          <p class="mt-5 max-w-2xl text-text-secondary leading-relaxed">
+            The signals are documented, the research is published, and the tool is free.
+            GeoReady exists to make AI visibility auditable and accessible to every developer.
+          </p>
+          <div class="mt-7 flex flex-wrap gap-3">
+            <a
+              href="#audit-form"
+              class="inline-block py-2.5 px-6 rounded-[--radius-md] bg-accent-teal text-white text-sm font-semibold hover:bg-accent-teal-dark transition-colors"
+            >
+              Start free check
+            </a>
+            <a
+              href="/pricing/"
+              data-cta="home_final_pick_plan"
+              class="inline-block py-2.5 px-6 rounded-[--radius-md] border border-border text-sm font-semibold text-text-primary hover:bg-bg-subtle transition-colors"
+            >
+              Start free or pick a plan
+            </a>
+          </div>
+        </div>
+        <div class="flex items-center border-t border-border bg-bg-subtle p-8 lg:border-l lg:border-t-0">
+          <MonitorSurface variant="light" compact class="w-full" />
+        </div>
+      </div>
+    </div>
+  </section>
+</Shell>

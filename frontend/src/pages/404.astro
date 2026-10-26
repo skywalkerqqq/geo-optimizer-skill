@@ -1,0 +1,63 @@
+---
+import Shell from '../components/Shell.astro';
+---
+
+<Shell
+  title="404 — Page not found · GeoReady"
+  description="The page you're looking for doesn't exist. Head back to geoready.dev to audit your site's AI visibility."
+  canonical="https://geoready.dev/404/"
+  robots="noindex, nofollow"
+>
+  <div class="min-h-[60vh] flex items-center justify-center px-4 sm:px-6 py-20">
+    <div class="max-w-lg w-full text-center">
+
+      <div class="font-mono text-[120px] md:text-[160px] font-bold leading-none select-none"
+           style="background: linear-gradient(135deg, var(--color-accent-teal) 0%, var(--color-accent-electric) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+        404
+      </div>
+
+      <div class="mt-2 flex items-center justify-center gap-2 text-[10px] font-mono text-text-muted uppercase tracking-wider">
+        <span>GeoReady</span>
+        <span class="w-1 h-1 rounded-full bg-text-muted" aria-hidden="true"></span>
+        <span>Page not found</span>
+      </div>
+
+      <h1 class="mt-6 font-display text-2xl md:text-3xl font-bold text-text-primary leading-tight tracking-tight">
+        This page doesn't exist
+      </h1>
+
+      <p class="mt-4 text-base text-text-secondary leading-relaxed max-w-sm mx-auto">
+        The URL might be wrong, the page may have moved, or it was never here.
+        AI engines won't find it either — just like a site with no GEO signals.
+      </p>
+
+      <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a
+          href="/"
+          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-[--radius-md] bg-accent-teal text-white font-semibold text-sm transition-colors hover:bg-accent-teal-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal focus-visible:ring-offset-2"
+        >
+          Back to home
+        </a>
+        <a
+          href="/?audit=1#audit"
+          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-[--radius-md] border border-border text-text-secondary text-sm font-medium transition-colors hover:border-accent-teal hover:text-accent-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal focus-visible:ring-offset-2"
+        >
+          Audit your site
+        </a>
+      </div>
+
+      <div class="mt-14 pt-8 border-t border-border">
+        <p class="text-xs font-mono text-text-muted mb-5 uppercase tracking-wider">Useful links</p>
+        <nav aria-label="404 helpful links" class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+          <a href="/pricing/" class="text-sm text-text-muted hover:text-accent-teal transition-colors">Pricing</a>
+          <a href="/research/" class="text-sm text-text-muted hover:text-accent-teal transition-colors">Research</a>
+          <a href="/roadmap/" class="text-sm text-text-muted hover:text-accent-teal transition-colors">Roadmap</a>
+          <a href="/compare/" class="text-sm text-text-muted hover:text-accent-teal transition-colors">Compare</a>
+          <a href="/manifesto/" class="text-sm text-text-muted hover:text-accent-teal transition-colors">Manifesto</a>
+          <a href="https://github.com/skywalkerqqq/geo-optimizer-skill" target="_blank" rel="noopener" class="text-sm text-text-muted hover:text-accent-teal transition-colors">GitHub</a>
+        </nav>
+      </div>
+
+    </div>
+  </div>
+</Shell>

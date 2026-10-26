@@ -1,0 +1,410 @@
+---
+import Shell from '../../components/Shell.astro';
+import AICitationChecker from '../../components/tools/AICitationChecker';
+import CitationSurface from '../../components/product/CitationSurface.astro';
+import ArticleVisual from '../../components/ArticleVisual.astro';
+
+// Metadati SEO della pagina del tool.
+// Il title bilancia query intent ("cited by ChatGPT & Perplexity" come domanda)
+// e onestà: il check automatico usa Perplexity Sonar, dichiarato in description,
+// badge hero e FAQ. ChatGPT resta solo come claim di correlazione (framing FAQ).
+const title = 'AI Citation Checker — Is Your Site Cited by ChatGPT & Perplexity?';
+const description =
+  'Free AI citation checker powered by Perplexity Sonar: see whether AI answer engines mention your brand and cite your domain — with real, verifiable source citations.';
+const canonical = 'https://geoready.dev/tools/ai-citation-checker/';
+
+// I passi del controllo — riusati nello schema HowTo.
+const HOWTO_STEPS = [
+  ['Enter your domain', 'Type your brand, domain, and product category so the checker can ask the questions your customers would ask.'],
+  ['Run the free check', 'Start the citation check. The tool queries a source-backed AI answer engine — no account required.'],
+  ['Read the verdict', 'See whether ChatGPT- and Perplexity-style answers cite your domain, mention you without citing, or cite a competitor instead — and which sources were returned.'],
+] as const;
+
+// FAQ visibili — riusate sia nel markup crawlable che nello schema FAQPage.
+const faqs = [
+  {
+    question: 'What does an AI citation checker do?',
+    answer:
+      'An AI citation checker asks an AI answer engine the questions your customers ask and reports whether your brand is mentioned and whether your own domain is cited as a source. It tells you, for a given category, whether AI answers point people to you or to someone else.',
+  },
+  {
+    question: 'How is this different from rank tracking?',
+    answer:
+      'Rank trackers measure your position in a list of ten blue links on Google. An AI citation checker measures something different: whether an AI answer cites your domain as one of the few sources behind a single generated answer. A page can rank well on Google and still never be cited by AI, so the two metrics do not move together.',
+  },
+  {
+    question: 'Which AI engines does it check — ChatGPT or Perplexity?',
+    answer:
+      'The check queries Perplexity Sonar, an answer engine grounded in live web search that returns the exact source URLs it cited, which makes citations verifiable. ChatGPT and other parametric models do not expose their sources the same way. Citation patterns correlate across engines: content that is citable for Perplexity is building the signals other AI engines reward.',
+  },
+  {
+    question: 'How does the AI citation checker work?',
+    answer:
+      'It sends customer-style questions about your product category to Perplexity Sonar, an AI answer engine grounded in live web search, and analyzes the answers: is your brand mentioned in the text, and does your domain appear among the cited sources? You also see which competitor domains were cited instead of you.',
+  },
+  {
+    question: 'What does "mentioned but not cited" mean?',
+    answer:
+      'The AI knows your brand — usually from third-party pages like reviews or directories — but never cites your own domain as a source. That means other sites are the reference for your own product. The fix is making your own pages the citable source: structured data, llms.txt, statistics, and quotable content.',
+  },
+  {
+    question: 'How often do AI citations change?',
+    answer:
+      'Continuously. AI answers are regenerated for every query and the underlying indexes refresh constantly, so a brand cited today can silently disappear next week. A one-shot check is a snapshot; ongoing monitoring is how you catch losses early.',
+  },
+  {
+    question: 'Is this check really free?',
+    answer:
+      'Yes. Each check asks the AI engine two questions at our expense, so there is a fair-use limit per visitor and per day. For scheduled checks, more queries, history, and alerts, GeoReady plans start at $19/month.',
+  },
+];
+---
+
+<Shell title={title} description={description} canonical={canonical}>
+  <article class="px-4 sm:px-6 py-10 md:py-16">
+    {/* Header con breadcrumb eyebrow */}
+    <header class="mx-auto mb-10 max-w-7xl overflow-hidden rounded-[--radius-2xl] border border-border bg-bg-surface md:mb-12">
+      <div class="grid lg:grid-cols-[minmax(0,0.88fr)_minmax(420px,0.82fr)]">
+      <div class="p-6 md:p-10 lg:p-12">
+        <div class="flex items-center gap-2 text-[10px] font-mono text-text-muted uppercase tracking-wider">
+          <a href="/" class="hover:text-accent-teal">Home</a>
+          <span class="w-1 h-1 rounded-full bg-text-muted" />
+          <span>AI citation checker</span>
+        </div>
+
+        <h1 class="mt-4 max-w-3xl font-display text-4xl md:text-5xl font-bold text-text-primary leading-tight tracking-tight">
+          AI Citation Checker: is your brand cited by AI answer engines?
+        </h1>
+
+        {/* Badge onesto: dichiara l'engine effettivamente interrogato. */}
+        <p class="mt-4 inline-flex items-center gap-2 rounded-full border border-accent-teal/30 bg-accent-teal/5 px-3 py-1 text-xs font-mono text-accent-teal">
+          <span class="h-1.5 w-1.5 rounded-full bg-accent-teal" aria-hidden="true"></span>
+          Powered by Perplexity Sonar — real, verifiable source citations
+        </p>
+
+        {/* Intro answer-first: cosa fa il tool. */}
+        <p class="mt-5 max-w-2xl text-base md:text-lg text-text-secondary leading-relaxed">
+          When your customers ask an AI engine "what's the best tool for…", does the
+          answer mention <em>your</em> brand and cite <em>your</em> domain — or a
+          competitor's? This tool asks a real AI answer engine and shows you the
+          verdict, with the actual sources the AI cited. Citation patterns correlate
+          across engines: content that Perplexity cites is building the signals other
+          AI engines reward.
+        </p>
+
+        <div class="mt-8 grid gap-3 sm:grid-cols-3">
+          {[
+            ['Ask', 'Customer-style category prompts.'],
+            ['Trace', 'Returned sources and cited domains.'],
+            ['Act', 'Verdicts that point to the next fix.'],
+          ].map(([label, text]) => (
+            <div class="border-l border-accent-teal/30 pl-4">
+              <p class="font-mono text-[11px] uppercase tracking-[0.16em] text-accent-teal">{label}</p>
+              <p class="mt-1 text-sm leading-relaxed text-text-secondary">{text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="flex items-center border-t border-border bg-bg-subtle p-8 lg:border-l lg:border-t-0">
+        <CitationSurface mode="sov" variant="light" class="w-full" />
+      </div>
+      </div>
+    </header>
+
+    {/* ── Isola React: il checker vero e proprio ──────────────────────────── */}
+    <ArticleVisual
+      src="/images/article-visuals/B2RankingVsCitation.png"
+      alt="Side-by-side diagram comparing traditional search ranking with AI answer citation."
+      caption="AI citation checks measure source inclusion, not traditional ranking position."
+      height={377}
+      class="mx-auto"
+    />
+
+    <section class="mx-auto mb-12 max-w-5xl rounded-[--radius-lg] border border-border bg-bg-surface p-5 md:p-6" aria-labelledby="citation-intent-links-heading">
+      <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-accent-teal">Choose the right check</p>
+      <h2 id="citation-intent-links-heading" class="mt-2 font-display text-2xl font-bold leading-tight tracking-tight text-text-primary">
+        Citation checks and visibility checks answer different questions.
+      </h2>
+      <div class="mt-5 grid gap-3 md:grid-cols-3">
+        <a href="/perplexity-citation-checker/" class="rounded-[--radius-lg] border border-border bg-bg-base p-4 transition-colors hover:border-accent-teal">
+          <span class="text-sm font-semibold text-text-primary">Perplexity citation checker</span>
+          <span class="mt-2 block text-sm leading-relaxed text-text-secondary">Use this when you need source-backed answers with visible cited URLs.</span>
+        </a>
+        <a href="/chatgpt-visibility-checker/" class="rounded-[--radius-lg] border border-border bg-bg-base p-4 transition-colors hover:border-accent-teal">
+          <span class="text-sm font-semibold text-text-primary">ChatGPT visibility checker</span>
+          <span class="mt-2 block text-sm leading-relaxed text-text-secondary">Use this when the question is whether the page is ready for ChatGPT-style retrieval.</span>
+        </a>
+        <a href="/ai-seo-audit/" class="rounded-[--radius-lg] border border-border bg-bg-base p-4 transition-colors hover:border-accent-teal">
+          <span class="text-sm font-semibold text-text-primary">AI SEO audit</span>
+          <span class="mt-2 block text-sm leading-relaxed text-text-secondary">Use this when a poor citation result needs a technical and content diagnosis.</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="mx-auto mb-14 max-w-5xl md:mb-16" aria-labelledby="citation-tool-heading">
+      <div class="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-accent-teal">Tool workspace</p>
+          <h2 id="citation-tool-heading" class="mt-2 font-display text-2xl font-bold text-text-primary">Run a citation check</h2>
+        </div>
+        <p class="max-w-md text-sm leading-relaxed text-text-secondary">
+          Test a brand, domain, and category against source-backed AI answers.
+        </p>
+      </div>
+      <div class="rounded-[--radius-xl] border border-border bg-bg-surface p-3 shadow-[0_24px_80px_-60px_rgba(15,23,42,0.55)] sm:p-4">
+        <AICitationChecker client:load />
+      </div>
+    </section>
+
+    {/* ── Contenuto SEO statico e crawlable ───────────────────────────────── */}
+    <div class="max-w-7xl mx-auto space-y-12 md:space-y-16 [&_h2]:font-display [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-text-primary [&_h2]:leading-tight [&_h2]:tracking-tight [&_h3]:font-display [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-text-primary [&_p]:text-text-secondary [&_p]:leading-relaxed [&_li]:text-text-secondary [&_li]:leading-relaxed">
+
+      <section>
+        <h2>Why AI citations matter more than rankings</h2>
+        <p class="mt-4">
+          AI answer engines don't show ten blue links — they give one answer and
+          cite a handful of sources. If your domain is among those sources, you
+          capture the click and the trust. If it isn't, the AI is actively
+          sending your customers to whoever <em>is</em> cited. AI answers and
+          classic Google rankings don't always overlap: a page can rank well on
+          Google and never be cited by AI, so citation is a different game from
+          classic SEO, with different winners.
+        </p>
+      </section>
+
+      <ArticleVisual
+        src="/images/article-visuals/A1HeroAIDiscovery.png"
+        alt="End-to-end diagram showing a website becoming crawlable, understandable, quotable, and eligible for AI citation."
+        caption="A brand has to be crawlable, understandable, and quotable before an answer engine can cite it."
+        height={452}
+      />
+
+      <section>
+        <h2>What the four verdicts mean</h2>
+        <ul class="mt-5 space-y-3" role="list">
+          <li class="flex gap-3 rounded-[--radius-lg] border border-border bg-bg-surface p-4">
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-400/25 bg-amber-400/10 text-amber-600" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 21h8" />
+                <path d="M12 17v4" />
+                <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" />
+                <path d="M7 6H4a3 3 0 0 0 3 3" />
+                <path d="M17 6h3a3 3 0 0 1-3 3" />
+              </svg>
+            </span>
+            <p><strong>Strong</strong> — your domain is cited as a source in most answers. Monitor it: positions degrade silently.</p>
+          </li>
+          <li class="flex gap-3 rounded-[--radius-lg] border border-border bg-bg-surface p-4">
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-accent-teal/25 bg-accent-teal/10 text-accent-teal" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </span>
+            <p><strong>Cited</strong> — you appear among sources, but not consistently. Strengthen citability to win more answers.</p>
+          </li>
+          <li class="flex gap-3 rounded-[--radius-lg] border border-border bg-bg-surface p-4">
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-400/25 bg-amber-400/10 text-amber-600" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="8" />
+                <path d="M12 8v4" />
+                <path d="M12 16h.01" />
+              </svg>
+            </span>
+            <p><strong>Mentioned only</strong> — the AI knows your brand from third parties but never cites your own pages. Make your domain the reference.</p>
+          </li>
+          <li class="flex gap-3 rounded-[--radius-lg] border border-border bg-bg-surface p-4">
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-accent-danger/25 bg-accent-danger/10 text-accent-danger" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="8" />
+                <path d="m15 9-6 6" />
+                <path d="m9 9 6 6" />
+              </svg>
+            </span>
+            <p><strong>Invisible</strong> — neither mentioned nor cited. Start with a <a href="/ai-seo-audit/" data-cta="citation_checker_verdict_ai_seo_audit" class="text-accent-teal hover:underline">free GEO audit</a> and fix the high-impact items first.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>How to improve your AI citations</h2>
+        <p class="mt-4">
+          Citations are earned with technical and content signals that AI
+          retrieval rewards: open access for AI crawlers, structured data,
+          an <a href="/tools/llms-txt-generator/" class="text-accent-teal hover:underline">llms.txt</a>,
+          quotable statistics, and multi-page topical coverage. The
+          {' '}<a href="/guides/generative-engine-optimization/" class="text-accent-teal hover:underline">GEO guide</a>{' '}
+          covers the full playbook, and the
+          {' '}<a href="/ai-seo-audit/" data-cta="citation_checker_content_ai_seo_audit" class="text-accent-teal hover:underline">free GEO audit</a>{' '}
+          scores your site on 100 points across 8 categories. For the background
+          method behind this tool, see our step-by-step guide on
+          {' '}<a href="/guides/ai-citations-check/" class="text-accent-teal hover:underline">how to tell if ChatGPT is citing your brand</a>.
+          Run the audit, fix the priority items, then come back and re-check your
+          citations.
+        </p>
+      </section>
+
+      <section>
+        <h2>Which AI citation result should trigger action?</h2>
+        <p class="mt-4">
+          A single AI citation check is useful only if it leads to the right next
+          step. Use the result below to decide whether to monitor, improve the
+          source page, or rebuild the visibility foundation.
+        </p>
+        <div class="mt-5 overflow-x-auto rounded-[--radius-lg] border border-border bg-bg-surface">
+          <table class="min-w-full border-collapse text-left text-sm">
+            <thead class="bg-bg-subtle text-text-primary">
+              <tr>
+                <th scope="col" class="border-b border-border px-4 py-3 font-semibold">Result</th>
+                <th scope="col" class="border-b border-border px-4 py-3 font-semibold">Risk</th>
+                <th scope="col" class="border-b border-border px-4 py-3 font-semibold">Next action</th>
+                <th scope="col" class="border-b border-border px-4 py-3 font-semibold">GeoReady workflow</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" class="border-b border-border px-4 py-3 font-semibold text-text-primary">Strong</th>
+                <td class="border-b border-border px-4 py-3">You can lose citations without noticing.</td>
+                <td class="border-b border-border px-4 py-3">Track the same prompts weekly.</td>
+                <td class="border-b border-border px-4 py-3">Studio citation snapshots and alerts.</td>
+              </tr>
+              <tr>
+                <th scope="row" class="border-b border-border px-4 py-3 font-semibold text-text-primary">Cited</th>
+                <td class="border-b border-border px-4 py-3">Competitors still appear in adjacent prompts.</td>
+                <td class="border-b border-border px-4 py-3">Find the prompts where your domain is missing.</td>
+                <td class="border-b border-border px-4 py-3">Prompt tracking plus competitor comparison.</td>
+              </tr>
+              <tr>
+                <th scope="row" class="border-b border-border px-4 py-3 font-semibold text-text-primary">Mentioned only</th>
+                <td class="border-b border-border px-4 py-3">Third-party pages define your brand for AI answers.</td>
+                <td class="border-b border-border px-4 py-3">Make your own domain the better source.</td>
+                <td class="border-b border-border px-4 py-3">Audit, source gaps, structured content fixes.</td>
+              </tr>
+              <tr>
+                <th scope="row" class="px-4 py-3 font-semibold text-text-primary">Invisible</th>
+                <td class="px-4 py-3">AI answers send buyers to other domains.</td>
+                <td class="px-4 py-3">Fix crawlability, schema, content, and authority first.</td>
+                <td class="px-4 py-3">Free GEO audit, then monitored fixes.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* FAQ visibili (stesse del FAQPage schema) */}
+      <ArticleVisual
+        src="/images/article-visuals/D4MonitorLoop.png"
+        alt="Loop diagram showing citation checks repeated over time through snapshots, fixes, rechecks, and monitoring."
+        caption="A citation check is a snapshot; monitoring shows when answers change."
+        height={424}
+      />
+
+      <section>
+        <h2>Frequently asked questions</h2>
+        <div class="mt-6 space-y-6">
+          {faqs.map((faq) => (
+            <div>
+              <h3>{faq.question}</h3>
+              <p class="mt-2">{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA finale → SaaS */}
+      <section>
+        <h2>One check is a snapshot. Tracking is the moat.</h2>
+        <p class="mt-4">
+          AI answers change every week. GeoReady turns this one-off check into
+          ongoing AI citation tracking: it runs your citation checks on a
+          schedule, alerts you when you lose or win a citation, and shows who
+          replaced you — so you act before the traffic moves.
+        </p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a
+            href="https://app.geoready.dev/signup?plan=studio&intent=citations&utm_source=ai_citation_checker_page&utm_medium=content_cta&utm_campaign=tool_to_paid"
+            data-plan-id="studio"
+            data-plan-name="Studio"
+            data-plan-period="monthly"
+            data-plan-price="$49"
+            data-plan-currency="USD"
+            data-cta-location="citation_checker_final_tracking"
+            class="inline-flex items-center justify-center rounded-full bg-accent-teal px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Track citations weekly
+          </a>
+          <a
+            href="/pricing/"
+            data-cta="citation_checker_final_pricing"
+            class="inline-flex items-center justify-center rounded-full border border-border px-6 py-3 text-sm font-medium text-text-primary transition-colors hover:border-accent-teal"
+          >
+            See pricing
+          </a>
+        </div>
+      </section>
+    </div>
+  </article>
+
+  {/* Schema JSON-LD: WebApplication (il tool) + FAQPage (le stesse FAQ visibili). */}
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "@id": "https://geoready.dev/tools/ai-citation-checker/#webapp",
+        "isPartOf": { "@id": "https://geoready.dev/#webapp" },
+        "name": "AI Citation Checker (Powered by Perplexity Sonar)",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any",
+        "url": canonical,
+        "description": description,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "publisher": { "@id": "https://geoready.dev/#organization" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": faqs.map((faq) => ({
+          "@type": "Question",
+          "name": faq.question,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": faq.answer
+          }
+        }))
+      },
+      {
+        "@type": "HowTo",
+        "name": "How to check if AI answers cite you",
+        "description": "Run a free AI citation check powered by Perplexity Sonar: enter your domain, run the check, and read whether AI answer engines cite you or a competitor.",
+        "totalTime": "PT1M",
+        "step": HOWTO_STEPS.map(([name, text], index) => ({
+          "@type": "HowToStep",
+          "position": index + 1,
+          "name": name,
+          "text": text
+        }))
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "GeoReady",
+            "item": "https://geoready.dev/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "AI Citation Checker",
+            "item": canonical
+          }
+        ]
+      }
+    ]
+  })} />
+</Shell>

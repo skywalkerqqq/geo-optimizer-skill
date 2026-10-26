@@ -1,0 +1,76 @@
+schema_version: 1
+id: geo_trust_signal_review
+name: GEO Trust Signal Review
+version: 1.0.0
+kind: analysis
+summary: >
+  Evaluate whether a site or page exposes a strong enough trust-signal layer
+  for GEO-related reliability, source confidence, and AI-facing trust
+  interpretation.
+when_to_use:
+  - You already have GEO audit evidence and need a narrower judgment about trust and source confidence.
+  - You need to identify which trust-related weaknesses or negative signals most reduce source reliability.
+required_inputs:
+  - target_url
+  - audit_evidence_input
+expected_outputs:
+  - trust_signal_review_summary
+  - prioritized_trust_gaps
+  - trust_signal_strengths
+  - trust_improvement_priorities
+  - next_step_recommendation
+engine_surfaces:
+  - python_api:audit
+  - python_api:AuditResult
+  - mcp:geo_audit
+  - mcp:geo_trust_score
+  - mcp:geo_negative_signals
+  - doc:docs/geo-audit.md
+  - doc:docs/scoring-rubric.md
+  - doc:docs/mcp-server.md
+workflow:
+  - id: anchor_on_trust_evidence
+    title: Anchor on trust evidence
+    goal: Start from authoritative GEO audit evidence so the trust review is grounded in real site findings instead of a generic trust checklist.
+    uses:
+      - python_api:audit
+      - python_api:AuditResult
+      - mcp:geo_audit
+      - doc:docs/geo-audit.md
+    outputs:
+      - normalized_trust_evidence
+  - id: assess_trust_stack
+    title: Assess trust stack
+    goal: Interpret the existing trust-stack layers and grade so the review reflects the repository's real reliability signals rather than an invented trust model.
+    uses:
+      - mcp:geo_trust_score
+      - doc:docs/geo-audit.md
+      - doc:docs/mcp-server.md
+    outputs:
+      - trust_signal_strengths
+      - trust_stack_findings
+  - id: assess_negative_signals
+    title: Assess negative signals
+    goal: Evaluate the negative signals that most undermine source confidence or make the site look less suitable for citation and reuse.
+    uses:
+      - mcp:geo_negative_signals
+      - doc:docs/scoring-rubric.md
+    outputs:
+      - prioritized_trust_gaps
+      - negative_signal_findings
+  - id: produce_trust_signal_view
+    title: Produce trust-signal view
+    goal: Summarize trust posture, rank the highest-leverage trust gaps, and route to the next focused workflow.
+    uses:
+      - doc:docs/geo-audit.md
+      - doc:docs/scoring-rubric.md
+    outputs:
+      - trust_signal_review_summary
+      - trust_improvement_priorities
+      - next_step_recommendation
+guardrails:
+  - Do not turn this into a broad reputation analysis or generic EEAT checklist.
+  - Do not invent a new trust scoring system beyond the repository's existing trust-stack and negative-signal surfaces.
+  - Do not generate a broad repair workflow; route to foundation repair if implementation planning is the real need.
+  - Keep every claim anchored to existing audit evidence, trust-stack outputs, negative signals, or repository docs.
+prompt_file: prompt.md
