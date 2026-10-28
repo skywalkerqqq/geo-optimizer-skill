@@ -67,6 +67,9 @@ graphify-out/
 node_modules/
 package-lock.json
 
+# Frontend needs a committed lockfile so CI can run `npm ci` reproducibly
+!frontend/package-lock.json
+
 # Local AI agent config (upstream internal tooling)
 .claude/
 
